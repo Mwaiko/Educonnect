@@ -32,7 +32,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     # Local
-    "users",
+    "apps.users",
 ]
 
 # ─────────────────────────────────────────
@@ -49,7 +49,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "educonnect.urls"
+ROOT_URLCONF = "educonnectbackend.urls"
 
 TEMPLATES = [
     {
@@ -67,28 +67,28 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "educonnect.wsgi.application"
+WSGI_APPLICATION = "educonnectbackend.wsgi.application"
 
 # ─────────────────────────────────────────
 # Database
 # ─────────────────────────────────────────
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
-}
-# For PostgreSQL in production, replace with:
 # DATABASES = {
 #     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": os.environ.get("DB_NAME", "educonnect"),
-#         "USER": os.environ.get("DB_USER", "postgres"),
-#         "PASSWORD": os.environ.get("DB_PASSWORD", ""),
-#         "HOST": os.environ.get("DB_HOST", "localhost"),
-#         "PORT": os.environ.get("DB_PORT", "5432"),
+#         "ENGINE": "django.db.backends.sqlite3",
+#         "NAME": BASE_DIR / "db.sqlite3",
 #     }
 # }
+# For PostgreSQL in production, replace with:
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ.get("DB_NAME", "educonnect"),
+        "USER": os.environ.get("DB_USER", "postgres"),
+        "PASSWORD": os.environ.get("DB_PASSWORD", "101121"),
+        "HOST": os.environ.get("DB_HOST", "localhost"),
+        "PORT": os.environ.get("DB_PORT", "5432"),
+    }
+}
 
 # ─────────────────────────────────────────
 # Custom User Model
