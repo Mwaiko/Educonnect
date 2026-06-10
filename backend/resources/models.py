@@ -22,13 +22,7 @@ class Resource(models.Model):
     title = models.CharField(max_length=255)
     url = models.URLField()
     resource_type = models.CharField(max_length=50, choices=RESOURCE_TYPES, blank=True, null=True)
-    tag = models.ForeignKey(
-        'forum.Tag',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='resources'
-    )
+    tag = models.CharField(max_length=80, blank=True, null=True)
     net_votes = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
