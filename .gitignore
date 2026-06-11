@@ -33,3 +33,8 @@ backend/venv/
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# Python bytecode
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
