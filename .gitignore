@@ -22,7 +22,7 @@ content = '''# dependencies
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
+backend/venv/
 # local env files
 .env*.local
 .env
