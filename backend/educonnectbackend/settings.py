@@ -2,6 +2,7 @@ import os
 import environ
 from pathlib import Path
 from datetime import timedelta
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # This goes one level higher up to find your top folder
@@ -10,11 +11,16 @@ TOP_FOLDER_DIR = BASE_DIR.parent
 # Tell environ to look in that top folder for the .env file
 environ.Env.read_env(os.path.join(TOP_FOLDER_DIR, '.env'))
 
-# 1. Core Django Settings (Fixed to use os.environ)
-SECRET_KEY = os.environ.get('SECRET_KEY')
-DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 't')
+# ─────────────────────────────────────────
+# Security & Core Django Settings
+# ─────────────────────────────────────────
+SECRET_KEY = os.environ.get('SECRET_KEY', os.environ.get("DJANGO_SECRET_KEY", "change-me-in-production"))
+DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 't')
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
+# ─────────────────────────────────────────
+# Installed Apps
+# ─────────────────────────────────────────
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -22,16 +28,22 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Third-party
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
+    # Local Apps
     'resources',
+    'apps.users',
 ]
 
+# ─────────────────────────────────────────
+# Middleware
+# ─────────────────────────────────────────
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',   # Must be first
     'django.middleware.security.SecurityMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -40,18 +52,19 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'educonnectbackend.urls'
+ROOT_URLCONF = "educonnectbackend.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
@@ -59,7 +72,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'educonnectbackend.wsgi.application'
 
-# 2. Database Configuration (Fixed to use os.environ)
+# ─────────────────────────────────────────
+# Database Configuration
+# ─────────────────────────────────────────
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -71,27 +86,23 @@ DATABASES = {
     }
 }
 
-AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
-]
+# ─────────────────────────────────────────
+# Custom User Model
+# ─────────────────────────────────────────
+AUTH_USER_MODEL = "users.User"
 
-LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'Africa/Nairobi'
-USE_I18N = True
-USE_TZ = True
-
-STATIC_URL = 'static/'
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
+# ─────────────────────────────────────────
+# Django REST Framework
+# ─────────────────────────────────────────
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
+    ),
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
@@ -105,16 +116,52 @@ REST_FRAMEWORK = {
     },
 }
 
+# ─────────────────────────────────────────
+# Simple JWT Configuration
+# ─────────────────────────────────────────
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'ALGORITHM': 'HS256',
     'AUTH_HEADER_TYPES': ('Bearer',),
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
 }
 
-# 3. CORS Configuration (Fixed syntax and changed to os.environ)
+# ─────────────────────────────────────────
+# CORS Configuration
+# ─────────────────────────────────────────
 CORS_ALLOWED_ORIGINS = [
     os.environ.get('FRONTEND_ORIGIN', 'http://localhost:3000'),
+    "http://localhost:5173",   # Vite default
 ]
+
+# ─────────────────────────────────────────
+# Email Configuration
+# ─────────────────────────────────────────
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+DEFAULT_FROM_EMAIL = "EduConnect <no-reply@educonnect.ac.ke>"
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+
+# ─────────────────────────────────────────
+# Password Validation
+# ─────────────────────────────────────────
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+]
+
+# ─────────────────────────────────────────
+# Internationalisation & Static
+# ─────────────────────────────────────────
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'Africa/Nairobi'
+USE_I18N = True
+USE_TZ = True
+
+STATIC_URL = '/static/'
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
