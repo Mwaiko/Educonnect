@@ -1,12 +1,19 @@
+import os
+import environ
 from pathlib import Path
 from datetime import timedelta
-from decouple import config
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = config('SECRET_KEY')
-DEBUG = config('DEBUG', cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS').split(',')
+# This goes one level higher up to find your top folder
+TOP_FOLDER_DIR = BASE_DIR.parent 
+
+# Tell environ to look in that top folder for the .env file
+environ.Env.read_env(os.path.join(TOP_FOLDER_DIR, '.env'))
+
+# 1. Core Django Settings (Fixed to use os.environ)
+SECRET_KEY = os.environ.get('SECRET_KEY')
+DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 't')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -52,14 +59,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'educonnectbackend.wsgi.application'
 
+# 2. Database Configuration (Fixed to use os.environ)
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST'),
-        'PORT': config('DB_PORT'),
+        'NAME': os.environ.get('DB_NAME', 'educonnect_db'),
+        'USER': os.environ.get('DB_USER', 'postgres'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
 
@@ -106,6 +114,7 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
+# 3. CORS Configuration (Fixed syntax and changed to os.environ)
 CORS_ALLOWED_ORIGINS = [
-    config('FRONTEND_ORIGIN'),
+    os.environ.get('FRONTEND_ORIGIN', 'http://localhost:3000'),
 ]

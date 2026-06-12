@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+const BASE_URL = 'http://localhost:8000/api/v1';
+
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api/v1',
+  baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -24,7 +26,10 @@ api.interceptors.response.use(
       const refresh = localStorage.getItem('refresh_token');
       if (refresh) {
         try {
-          const res = await axios.post('http://localhost:8000/api/v1/auth/token/refresh/', { refresh });
+          // Fixed: Extracted absolute URL parsing mismatch
+          const refreshUrl = `${BASE_URL}/auth/token/refresh/`;
+          const res = await axios.post(refreshUrl, { refresh: refresh });
+          
           localStorage.setItem('access_token', res.data.access);
           original.headers.Authorization = `Bearer ${res.data.access}`;
           return api(original);
