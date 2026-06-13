@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     # Local Apps
     'resources',
     'apps.users',
+    'groups',
 ]
 
 # ─────────────────────────────────────────
