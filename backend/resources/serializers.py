@@ -19,10 +19,10 @@ class ResourceSerializer(serializers.ModelSerializer):
         if obj.submitted_by:
             return {
                 'id': str(obj.submitted_by.id),
-                'username': obj.submitted_by.username
+                'username': f"{obj.submitted_by.first_name} {obj.submitted_by.last_name}".strip(),
+                'email': obj.submitted_by.email,
             }
         return None
-
     def get_user_vote(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:

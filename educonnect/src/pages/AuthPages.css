@@ -378,3 +378,22 @@
   .auth-stats { display: none; }
   .auth-name-row { grid-template-columns: 1fr; }
 }
+.ec-pwd-rules {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  font-size: 0.78rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: #9ca3af;
+}
+.ec-pwd-rules li.met {
+  color: #16a34a;
+}
+.ec-pwd-mismatch {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: #dc2626;
+}

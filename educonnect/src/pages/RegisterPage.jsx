@@ -3,6 +3,7 @@
    Route: /register
    API: POST /api/v1/auth/register/
    ============================================================ */
+
 import { useState } from "react";
 import "./AuthPages.css";
 
@@ -17,6 +18,8 @@ const ROLES = [
   { value: "student",      label: "Student",       desc: "Browse, ask, and answer questions" },
   { value: "expert_solver", label: "Expert Solver", desc: "All student privileges + answer endorsement" },
 ];
+
+const SPECIAL_CHAR_REGEX = /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;'`~/]/;
 
 export default function RegisterPage() {
   const [step, setStep]       = useState(1); // 2-step form
@@ -37,10 +40,23 @@ export default function RegisterPage() {
       : [...form.subjects, s]
     );
 
+  // Password rule checks (used for both validation and the live indicator)
+  const pwdRules = {
+    length:  form.password.length >= 8,
+    letter:  /[A-Za-z]/.test(form.password),
+    number:  /[0-9]/.test(form.password),
+    special: SPECIAL_CHAR_REGEX.test(form.password),
+  };
+
   const validateStep1 = () => {
     if (!form.first_name.trim() || !form.last_name.trim()) return "Please enter your full name.";
     if (!form.email.includes("@")) return "Please enter a valid email address.";
-    if (form.password.length < 8)  return "Password must be at least 8 characters.";
+
+    if (!pwdRules.length)  return "Password must be at least 8 characters.";
+    if (!pwdRules.letter)  return "Password must contain at least one letter.";
+    if (!pwdRules.number)  return "Password must contain at least one number.";
+    if (!pwdRules.special) return "Password must contain at least one special character.";
+
     if (form.password !== form.confirm_password) return "Passwords do not match.";
     return null;
   };
@@ -203,6 +219,24 @@ export default function RegisterPage() {
                     }
                   </button>
                 </div>
+
+                {/* Live password rule checklist */}
+                {form.password.length > 0 && (
+                  <ul className="ec-pwd-rules">
+                    <li className={pwdRules.length ? "met" : ""}>
+                      {pwdRules.length ? "✓" : "•"} At least 8 characters
+                    </li>
+                    <li className={pwdRules.letter ? "met" : ""}>
+                      {pwdRules.letter ? "✓" : "•"} Contains a letter
+                    </li>
+                    <li className={pwdRules.number ? "met" : ""}>
+                      {pwdRules.number ? "✓" : "•"} Contains a number
+                    </li>
+                    <li className={pwdRules.special ? "met" : ""}>
+                      {pwdRules.special ? "✓" : "•"} Contains a special character
+                    </li>
+                  </ul>
+                )}
               </div>
 
               <div className="ec-input-group">
@@ -211,6 +245,9 @@ export default function RegisterPage() {
                   className="ec-input" placeholder="Repeat your password"
                   value={form.confirm_password}
                   onChange={(e) => set("confirm_password", e.target.value)} required />
+                {form.confirm_password.length > 0 && form.password !== form.confirm_password && (
+                  <span className="ec-pwd-mismatch">Passwords do not match</span>
+                )}
               </div>
 
               {/* Role selection */}

@@ -39,7 +39,6 @@ export default function LoginPage() {
         return;
       }
 
-      // Store tokens (access + refresh) and redirect
       localStorage.setItem("access_token",  data.access);
       localStorage.setItem("refresh_token", data.refresh);
       window.location.href = "/dashboard";
