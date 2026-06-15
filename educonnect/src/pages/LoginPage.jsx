@@ -71,38 +71,8 @@ export default function LoginPage() {
             A peer-to-peer platform where students share knowledge, earn streaks, and build academic momentum.
           </p>
 
-          {/* Social proof */}
-          <div className="auth-social-proof">
-            <div className="auth-avatars">
-              {["MK", "IK", "AW", "JN"].map((init, i) => (
-                <div
-                  key={init}
-                  className={`avatar ${["av-indigo","av-cyan","av-green","av-amber"][i]}`}
-                  style={{ marginLeft: i === 0 ? 0 : -10, zIndex: 4 - i }}
-                >
-                  {init}
-                </div>
-              ))}
-              <div className="avatar" style={{ marginLeft: -10, background: "rgba(255,255,255,0.2)", color: "#fff", fontSize: 11 }}>
-                +2k
-              </div>
-            </div>
-            <span className="auth-social-text">Students already learning together</span>
-          </div>
-
-          {/* Stats */}
-          <div className="auth-stats">
-            {[
-              { value: "12k+", label: "Questions answered" },
-              { value: "340",  label: "Active study groups" },
-              { value: "95%",  label: "Satisfaction rate" },
-            ].map((s) => (
-              <div className="auth-stat" key={s.label}>
-                <span className="auth-stat-value">{s.value}</span>
-                <span className="auth-stat-label">{s.label}</span>
-              </div>
-            ))}
-          </div>
+          
+          
         </div>
       </div>
 
