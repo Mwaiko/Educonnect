@@ -1,0 +1,73 @@
+from django.conf import settings
+from django.db import migrations, models
+import django.db.models.deletion
+
+
+class Migration(migrations.Migration):
+
+    initial = True
+
+    dependencies = [
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name="StreakRecord",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False)),
+                ("date", models.DateField()),
+                ("events_count", models.PositiveIntegerField(default=0)),
+                ("streak_count", models.PositiveIntegerField(default=1)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="streak_records",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+            ],
+            options={
+                "db_table": "gamification_streakrecord",
+                "ordering": ["-date"],
+                "unique_together": {("user", "date")},
+            },
+        ),
+        migrations.CreateModel(
+            name="PointTransaction",
+            fields=[
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False)),
+                (
+                    "event_type",
+                    models.CharField(
+                        choices=[
+                            ("post_question", "Post a Question"),
+                            ("submit_answer", "Submit an Answer"),
+                            ("answer_endorsed", "Answer Endorsed by Expert"),
+                            ("answer_accepted", "Answer Accepted"),
+                            ("submit_resource", "Submit a Resource"),
+                            ("resource_milestone", "Resource Reached 10 Votes"),
+                            ("attend_session", "Attended Study Group Session"),
+                        ],
+                        max_length=30,
+                    ),
+                ),
+                ("points_awarded", models.IntegerField()),
+                ("description", models.CharField(blank=True, max_length=255)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="point_transactions",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+            ],
+            options={
+                "db_table": "gamification_pointtransaction",
+                "ordering": ["-created_at"],
+            },
+        ),
+    ]
