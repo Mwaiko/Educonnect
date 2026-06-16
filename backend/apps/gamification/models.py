@@ -50,3 +50,4 @@ class PointTransaction(models.Model):
 
     def __str__(self):
         return f"{self.user} | {self.event_type} | +{self.points_awarded}pts"
+## Added Models
