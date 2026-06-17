@@ -36,12 +36,13 @@ INSTALLED_APPS = [
     # Local Apps
     'resources',
     'apps.users',
-    # 'apps.chat',
+# 'apps.chat',
     'apps.forum',
     'apps.gamification',
     # 'apps.groups',
     # 'apps.notification',
     'django_extensions',
+    'groups',
 ]
 
 # ─────────────────────────────────────────
