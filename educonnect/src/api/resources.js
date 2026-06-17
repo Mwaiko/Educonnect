@@ -1,13 +1,38 @@
-import api from './axios';
+/**
+ * src/api/resources.js
+ * API helpers for the Resource Repository feature.
+ * Place this file at: src/api/resources.js
+ */
 
-export const getResources = (params) => api.get('/resources/', { params });
+const BASE = "/api/v1/resources";
 
-export const getResource = (id) => api.get(`/resources/${id}/`);
+const authHeaders = () => ({
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+});
 
-export const createResource = (data) => api.post('/resources/', data);
+export const getResources = (params = {}) => {
+  const qs = new URLSearchParams(params).toString();
+  return fetch(`${BASE}/${qs ? "?" + qs : ""}`, { headers: authHeaders() })
+    .then((r) => r.json().then((data) => ({ data })));
+};
 
-export const updateResource = (id, data) => api.patch(`/resources/${id}/`, data);
+export const createResource = (payload) =>
+  fetch(`${BASE}/`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  }).then((r) => r.json().then((data) => ({ data })));
 
-export const deleteResource = (id) => api.delete(`/resources/${id}/`);
+export const voteResource = (id, value) =>
+  fetch(`${BASE}/${id}/vote/`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ value }),
+  }).then((r) => r.json().then((data) => ({ data })));
 
-export const voteResource = (id, value) => api.post(`/resources/${id}/vote/`, { value });
+export const deleteResource = (id) =>
+  fetch(`${BASE}/${id}/`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });

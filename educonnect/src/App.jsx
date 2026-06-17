@@ -1,8 +1,5 @@
-/* ============================================================
-   App.jsx – EduConnect Frontend Router & App Entry
-   ============================================================ */
 import { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Auth & Profile Pages
 import LoginPage          from "./pages/LoginPage";
@@ -11,9 +8,17 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import UserProfilePage    from "./pages/UserProfilePage";
 import EditProfilePage    from "./pages/EditProfilePage";
 
-// Resource Management Pages (Your temporary Dashboard)
+// The Real Main Dashboard View (imported from your dashboard.jsx)
+import MainDashboard      from "./pages/dashboard";
+
+// Resource Management Pages
 import ResourceList       from './pages/Resources/ResourceList';
 import ResourceForm       from './pages/Resources/ResourceForm';
+
+// Study Group Pages
+import GroupList          from './pages/Groups/GroupList';
+import GroupDetail        from './pages/Groups/GroupDetail';
+import GroupForm          from './pages/Groups/GroupForm';
 
 import "./styles/tokens.css";
 
@@ -23,23 +28,49 @@ function RequireAuth({ children }) {
   return token ? children : <Navigate to="/login" replace />;
 }
 
-/* Wrapper component to handle resource view states */
+/* Resources page wrapper with its own add-form modal state */
 function DashboardResources() {
   const [showForm, setShowForm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-
   const handleSuccess = () => setRefreshKey(k => k + 1);
 
   return (
     <>
-      <ResourceList
+      <ResourceList key={refreshKey} onAdd={() => setShowForm(true)} />
+      {showForm && (
+        <ResourceForm onClose={() => setShowForm(false)} onSuccess={handleSuccess} />
+      )}
+    </>
+  );
+}
+
+/* Study Groups page wrapper with list/detail/create-form state */
+function DashboardGroups() {
+  const [showForm, setShowForm] = useState(false);
+  const [selectedGroupId, setSelectedGroupId] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const handleSuccess = () => setRefreshKey(k => k + 1);
+
+  if (selectedGroupId) {
+    return (
+      <GroupDetail
+        groupId={selectedGroupId}
+        onBack={() => setSelectedGroupId(null)}
+      />
+    );
+  }
+
+  return (
+    <>
+      <GroupList
         key={refreshKey}
         onAdd={() => setShowForm(true)}
+        onView={(id) => setSelectedGroupId(id)}
       />
       {showForm && (
-        <ResourceForm
+        <GroupForm
           onClose={() => setShowForm(false)}
-          onSuccess={handleSuccess}
+          onSuccess={() => { handleSuccess(); setShowForm(false); }}
         />
       )}
     </>
@@ -55,10 +86,22 @@ export default function App() {
         <Route path="/register"        element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-        {/* Protected Dashboard / Resource Management */}
-        <Route path="/" element={
+        {/* Root Redirect straight to Dashboard */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+        <Route path="/dashboard" element={<MainDashboard />} />
+
+        {/* Protected Resources Sub-Route */}
+        <Route path="/resources" element={
           <RequireAuth>
             <DashboardResources />
+          </RequireAuth>
+        } />
+
+        {/* Protected Study Groups Sub-Route */}
+        <Route path="/groups" element={
+          <RequireAuth>
+            <DashboardGroups />
           </RequireAuth>
         } />
 
@@ -71,7 +114,7 @@ export default function App() {
         } />
 
         {/* Default Catch-All Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
   );
