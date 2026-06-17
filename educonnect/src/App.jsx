@@ -11,7 +11,10 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import UserProfilePage    from "./pages/UserProfilePage";
 import EditProfilePage    from "./pages/EditProfilePage";
 
-// Resource Management Pages (Your temporary Dashboard)
+// The Real Main Dashboard View (imported from your dashboard.jsx)
+import MainDashboard      from "./pages/dashboard"; 
+
+// Resource Management Pages (Accessible from sub-routes if needed)
 import ResourceList       from './pages/Resources/ResourceList';
 import ResourceForm       from './pages/Resources/ResourceForm';
 
@@ -23,7 +26,7 @@ function RequireAuth({ children }) {
   return token ? children : <Navigate to="/login" replace />;
 }
 
-/* Wrapper component to handle resource view states */
+/* Kept intact if you want to use it on an explicit /resources path later */
 function DashboardResources() {
   const [showForm, setShowForm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -55,8 +58,18 @@ export default function App() {
         <Route path="/register"        element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-        {/* Protected Dashboard / Resource Management */}
-        <Route path="/" element={
+        {/* Root Redirect straight to Dashboard */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+        {/* Protected Real Main Dashboard Route */}
+        <Route path="/dashboard" element={
+          <RequireAuth>
+            <MainDashboard />
+          </RequireAuth>
+        } />
+
+        {/* Protected Resources Sub-Route (if you want to links to it) */}
+        <Route path="/resources" element={
           <RequireAuth>
             <DashboardResources />
           </RequireAuth>
@@ -71,7 +84,7 @@ export default function App() {
         } />
 
         {/* Default Catch-All Fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>
   );

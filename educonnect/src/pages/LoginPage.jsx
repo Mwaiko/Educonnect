@@ -4,9 +4,11 @@
    API: POST /api/v1/auth/login/
    ============================================================ */
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./AuthPages.css";
 
 export default function LoginPage() {
+  const navigate = useNavigate();
   const [form, setForm]       = useState({ email: "", password: "" });
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -41,7 +43,8 @@ export default function LoginPage() {
 
       localStorage.setItem("access_token",  data.access);
       localStorage.setItem("refresh_token", data.refresh);
-      window.location.href = "/dashboard";
+      
+      navigate("/dashboard");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -69,9 +72,6 @@ export default function LoginPage() {
           <p className="auth-hero-sub">
             A peer-to-peer platform where students share knowledge, earn streaks, and build academic momentum.
           </p>
-
-          
-          
         </div>
       </div>
 

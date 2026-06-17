@@ -5,6 +5,7 @@
    ============================================================ */
 
 import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import "./AuthPages.css";
 
 const SUBJECTS = [
@@ -22,6 +23,7 @@ const ROLES = [
 const SPECIAL_CHAR_REGEX = /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;'`~/]/;
 
 export default function RegisterPage() {
+  const navigate = useNavigate();
   const [step, setStep]       = useState(1); // 2-step form
   const [form, setForm]       = useState({
     first_name: "", last_name: "", email: "",
@@ -33,14 +35,15 @@ export default function RegisterPage() {
   const [error, setError]     = useState("");
 
   const set = (key, val) => setForm((p) => ({ ...p, [key]: val }));
-
+  const get_Subjects = async (e) => {
+    
+  }
   const toggleSubject = (s) =>
     set("subjects", form.subjects.includes(s)
       ? form.subjects.filter((x) => x !== s)
       : [...form.subjects, s]
     );
 
-  // Password rule checks (used for both validation and the live indicator)
   const pwdRules = {
     length:  form.password.length >= 8,
     letter:  /[A-Za-z]/.test(form.password),
@@ -98,7 +101,7 @@ export default function RegisterPage() {
         return;
       }
 
-      window.location.href = "/login?registered=true";
+      navigate("/login?registered=true");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -220,7 +223,6 @@ export default function RegisterPage() {
                   </button>
                 </div>
 
-                {/* Live password rule checklist */}
                 {form.password.length > 0 && (
                   <ul className="ec-pwd-rules">
                     <li className={pwdRules.length ? "met" : ""}>
@@ -250,7 +252,6 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              {/* Role selection */}
               <div className="ec-input-group">
                 <label className="ec-label">Account type</label>
                 <div className="auth-role-cards">
@@ -313,7 +314,7 @@ export default function RegisterPage() {
           <hr className="ec-divider" />
           <p className="auth-form-footer">
             Already have an account?{" "}
-            <a href="/login" className="auth-link auth-link--bold">Sign in</a>
+            <Link to="/login" className="auth-link auth-link--bold">Sign in</Link>
           </p>
         </div>
       </div>

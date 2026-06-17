@@ -36,6 +36,12 @@ INSTALLED_APPS = [
     # Local Apps
     'resources',
     'apps.users',
+    # 'apps.chat',
+    'apps.forum',
+    'apps.gamification',
+    # 'apps.groups',
+    # 'apps.notification',
+    'django_extensions',
 ]
 
 # ─────────────────────────────────────────
@@ -85,7 +91,37 @@ DATABASES = {
         'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
-
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'fastapi_style': {
+            # This makes the log format look clean, showing time, level, and message
+            'format': '%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'fastapi_style',
+        },
+    },
+    'loggers': {
+        # This catches all incoming HTTP requests and server logs (the FastAPI effect)
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO', # Change to 'DEBUG' if you want even MORE logs
+            'propagate': False,
+        },
+        # OPTIONAL: Uncomment the lines below if you want to see every single SQL query 
+        # 'django.db.backends': {
+        #     'handlers': ['console'],
+        #     'level': 'DEBUG',
+        #     'propagate': False,
+        # },
+    },
+}
 # ─────────────────────────────────────────
 # Custom User Model
 # ─────────────────────────────────────────
