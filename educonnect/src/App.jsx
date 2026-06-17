@@ -61,14 +61,13 @@ export default function App() {
         {/* Root Redirect straight to Dashboard */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-        {/* Protected Real Main Dashboard Route */}
-        <Route path="/dashboard" element={
-          <RequireAuth>
-            <MainDashboard />
-          </RequireAuth>
-        } />
+        {/* REMOVED RequireAuth here. 
+          MainDashboard internally displays the guest panel if logged out,
+          and the authenticatd panel if logged in.
+        */}
+        <Route path="/dashboard" element={<MainDashboard />} />
 
-        {/* Protected Resources Sub-Route (if you want to links to it) */}
+        {/* Protected Resources Sub-Route */}
         <Route path="/resources" element={
           <RequireAuth>
             <DashboardResources />
