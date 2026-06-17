@@ -33,9 +33,13 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
+    'channels',
     # Local Apps
     'resources',
     'apps.users',
+    'groups',
+    'chat',
+    'notifications',
 ]
 
 # ─────────────────────────────────────────
@@ -164,4 +168,18 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
+
+# ─────────────────────────────────────────
+# Django Channels Configuration
+# ─────────────────────────────────────────
+ASGI_APPLICATION = 'educonnectbackend.routing.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [('127.0.0.1', 6379)],
+        },
+    },
+}
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
