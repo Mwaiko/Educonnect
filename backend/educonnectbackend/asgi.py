@@ -1,16 +1,11 @@
 """
 ASGI config for educonnectbackend project.
-
-It exposes the ASGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/6.0/howto/deployment/asgi/
+Configured for Django Channels to support both HTTP and WebSocket protocols.
 """
-
 import os
-
-from django.core.asgi import get_asgi_application
+import django
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'educonnectbackend.settings')
+django.setup()
 
-application = get_asgi_application()
+from .routing import application

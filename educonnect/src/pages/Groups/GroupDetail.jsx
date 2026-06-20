@@ -109,7 +109,7 @@ const SuccessMsg = styled.div`
   font-size: 13px; color: #065F46; margin-bottom: 1rem;
 `;
 
-export default function GroupDetail({ groupId, onBack }) {
+export default function GroupDetail({ groupId, onBack, onOpenChat }) {
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [provider, setProvider] = useState('google_meet');
@@ -230,6 +230,7 @@ export default function GroupDetail({ groupId, onBack }) {
         </Grid>
 
         <ActionRow>
+          <PrimaryBtn onClick={() => onOpenChat(groupId)}>Open Chat</PrimaryBtn>
           <DangerBtn onClick={handleLeave}>Exit Group</DangerBtn>
         </ActionRow>
       </Page>

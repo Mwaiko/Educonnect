@@ -19,6 +19,8 @@ import ResourceForm       from './pages/Resources/ResourceForm';
 import GroupList          from './pages/Groups/GroupList';
 import GroupDetail        from './pages/Groups/GroupDetail';
 import GroupForm          from './pages/Groups/GroupForm';
+import ChatRoom            from './pages/Chat/ChatRoom';
+import NotificationCenter  from './components/NotificationCenter';
 
 import "./styles/tokens.css";
 
@@ -45,17 +47,31 @@ function DashboardResources() {
 }
 
 /* Study Groups page wrapper with list/detail/create-form state */
+/* Study Groups page wrapper with list/detail/create-form/chat state */
 function DashboardGroups() {
   const [showForm, setShowForm] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState(null);
+  const [chatGroupId, setChatGroupId] = useState(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const handleSuccess = () => setRefreshKey(k => k + 1);
+  const currentUserId = localStorage.getItem('user_id') || '';
+
+  if (chatGroupId) {
+    return (
+      <ChatRoom
+        groupId={chatGroupId}
+        currentUserId={currentUserId}
+        onBack={() => setChatGroupId(null)}
+      />
+    );
+  }
 
   if (selectedGroupId) {
     return (
       <GroupDetail
         groupId={selectedGroupId}
         onBack={() => setSelectedGroupId(null)}
+        onOpenChat={(id) => setChatGroupId(id)}
       />
     );
   }
