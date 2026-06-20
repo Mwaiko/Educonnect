@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Python virtual environment
+backend/venv/
+
+# Optional Python ignores
+__pycache__/
+*.pyc
+.env

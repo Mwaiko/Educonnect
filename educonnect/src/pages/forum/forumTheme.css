@@ -1,0 +1,68 @@
+/*
+ * EduConnect Forum & Q&A — shared design tokens
+ *
+ * Design direction: "study margins" — a quiet, paper-toned workspace
+ * where annotations (tags, votes, endorsements) read like marginalia
+ * and stamps on a worked problem set. Calm base, one warm accent for
+ * the moment that matters most: an accepted answer.
+ *
+ * Palette:
+ *   --eq-paper:     #F7F4EC  (background)
+ *   --eq-ink:       #2B2A28  (primary text)
+ *   --eq-graphite:  #6B6660  (secondary text)
+ *   --eq-rule:      #DED7C8  (hairlines / borders)
+ *   --eq-accent:    #C1542C  (terracotta — accepted / primary actions)
+ *   --eq-verify:    #3D6B52  (forest — endorsed / expert signal)
+ *   --eq-tag-bg:    #EFE9DA  (tag chip background)
+ *
+ * Type:
+ *   Display / headings: "Source Serif 4" (characterful serif, used for
+ *     question titles — gives the feed a "set problem" feel)
+ *   Body / UI: "Inter" (clean, legible for long-form answers and forms)
+ *   Labels / meta: "IBM Plex Mono" (tags, counts, timestamps — reads
+ *     like stamped annotations in a margin)
+ */
+
+.forum-root {
+  --eq-paper: #f7f4ec;
+  --eq-paper-raised: #fffdf8;
+  --eq-ink: #2b2a28;
+  --eq-graphite: #6b6660;
+  --eq-rule: #ded7c8;
+  --eq-accent: #c1542c;
+  --eq-accent-soft: #f1ddd3;
+  --eq-verify: #3d6b52;
+  --eq-verify-soft: #dde8e1;
+  --eq-tag-bg: #efe9da;
+
+  background: var(--eq-paper);
+  color: var(--eq-ink);
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.forum-root * {
+  box-sizing: border-box;
+}
+
+.forum-serif {
+  font-family: "Source Serif 4", Georgia, serif;
+}
+
+.forum-mono {
+  font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+  letter-spacing: 0.02em;
+}
+
+.forum-root :focus-visible {
+  outline: 2px solid var(--eq-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forum-root * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

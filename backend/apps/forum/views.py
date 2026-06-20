@@ -1,0 +1,260 @@
+from django.db import transaction
+from django.db.models import F
+from django_filters import rest_framework as filters
+from rest_framework import generics, permissions, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
+from .models import Answer, AnswerUpvote, Question, QuestionUpvote, Tag
+from .permissions import (
+    IsAuthorOrAdminOrReadOnly,
+    IsExpertSolverOrAdmin,
+    IsQuestionAuthor,
+)
+from .serializers import (
+    AnswerCreateSerializer,
+    AnswerSerializer,
+    QuestionCreateSerializer,
+    QuestionDetailSerializer,
+    QuestionListSerializer,
+)
+
+# These hooks integrate with other modules (Gamification, Notifications).
+# They are implemented as no-op-safe imports so this module can run/tests
+# in isolation before the other modules' branches are merged into develop.
+try:
+    from gamification.services import award_points
+except ImportError:  # pragma: no cover - gamification module not yet merged
+    def award_points(user, event_type):
+        return None
+
+try:
+    from notifications.services import notify_new_answer, notify_answer_endorsed, notify_answer_accepted
+except ImportError:  # pragma: no cover - notifications module not yet merged
+    def notify_new_answer(question, answer):
+        return None
+
+    def notify_answer_endorsed(answer):
+        return None
+
+    def notify_answer_accepted(answer):
+        return None
+
+
+class QuestionFilter(filters.FilterSet):
+    tag = filters.CharFilter(field_name="tags__name", lookup_expr="iexact")
+    is_resolved = filters.BooleanFilter(field_name="is_resolved")
+    search = filters.CharFilter(method="filter_search")
+
+    class Meta:
+        model = Question
+        fields = ["tag", "is_resolved", "search"]
+
+    def filter_search(self, queryset, name, value):
+        from django.db.models import Q
+
+        return queryset.filter(Q(title__icontains=value) | Q(body__icontains=value))
+
+
+class QuestionViewSet(viewsets.ModelViewSet):
+    """
+    GET    /api/v1/forum/questions/                -> list (feed)
+    POST   /api/v1/forum/questions/                -> create
+    GET    /api/v1/forum/questions/{id}/           -> retrieve (with answers)
+    PATCH  /api/v1/forum/questions/{id}/           -> update (author/admin)
+    DELETE /api/v1/forum/questions/{id}/           -> delete (author/admin)
+    POST   /api/v1/forum/questions/{id}/upvote/    -> toggle upvote
+    """
+
+    queryset = (
+        Question.objects.all()
+        .select_related("author")
+        .prefetch_related("tags", "answers__author")
+    )
+    permission_classes = [permissions.IsAuthenticated, IsAuthorOrAdminOrReadOnly]
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = QuestionFilter
+
+    ORDERING_FIELDS = {
+        "-created_at": "-created_at",
+        "created_at": "created_at",
+        "upvote_count": "upvote_count",
+        "-upvote_count": "-upvote_count",
+    }
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return QuestionListSerializer
+        if self.action == "retrieve":
+            return QuestionDetailSerializer
+        return QuestionCreateSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        ordering = self.request.query_params.get("ordering", "-created_at")
+        qs = qs.order_by(self.ORDERING_FIELDS.get(ordering, "-created_at"))
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save()
+        award_points(self.request.user, "question_posted")
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        # Return the full detail representation so the frontend gets a
+        # consistent shape (tags, author, etc.) right after creation.
+        question = serializer.instance
+        out = QuestionDetailSerializer(question, context=self.get_serializer_context())
+        headers = self.get_success_headers(out.data)
+        return Response(out.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
+    @transaction.atomic
+    def upvote(self, request, pk=None):
+        question = self.get_object()
+        existing = QuestionUpvote.objects.filter(question=question, user=request.user).first()
+
+        if existing:
+            existing.delete()
+            Question.objects.filter(pk=question.pk).update(
+                upvote_count=F("upvote_count") - 1
+            )
+            user_has_upvoted = False
+        else:
+            QuestionUpvote.objects.create(question=question, user=request.user)
+            Question.objects.filter(pk=question.pk).update(
+                upvote_count=F("upvote_count") + 1
+            )
+            user_has_upvoted = True
+
+        question.refresh_from_db(fields=["upvote_count"])
+        return Response(
+            {"upvote_count": question.upvote_count, "user_has_upvoted": user_has_upvoted}
+        )
+
+
+class AnswerViewSet(viewsets.GenericViewSet):
+    """
+    POST /api/v1/forum/questions/{question_id}/answers/  -> create answer
+    PATCH /api/v1/forum/answers/{answer_id}/             -> edit answer
+    POST /api/v1/forum/answers/{answer_id}/endorse/      -> toggle endorsement
+    POST /api/v1/forum/answers/{answer_id}/accept/       -> accept answer
+    POST /api/v1/forum/answers/{answer_id}/upvote/       -> toggle upvote
+    """
+
+    queryset = Answer.objects.all().select_related("author", "question")
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == "create_for_question":
+            return AnswerCreateSerializer
+        return AnswerSerializer
+
+    @transaction.atomic
+    def create_for_question(self, request, question_id=None):
+        question = generics.get_object_or_404(Question, pk=question_id)
+        serializer = AnswerCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        answer = Answer.objects.create(
+            question=question, author=request.user, **serializer.validated_data
+        )
+
+        award_points(request.user, "answer_submitted")
+        notify_new_answer(question, answer)
+
+        out = AnswerSerializer(answer, context={"request": request})
+        return Response(out.data, status=status.HTTP_201_CREATED)
+
+    def partial_update(self, request, pk=None):
+        answer = self.get_object()
+        if not (answer.author_id == request.user.id or request.user.role == "admin"):
+            return Response(
+                {"detail": "You do not have permission to edit this answer."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        serializer = AnswerSerializer(
+            answer, data=request.data, partial=True, context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated, IsExpertSolverOrAdmin])
+    @transaction.atomic
+    def endorse(self, request, pk=None):
+        answer = self.get_object()
+        answer.is_endorsed = not answer.is_endorsed
+        answer.save(update_fields=["is_endorsed"])
+
+        if answer.is_endorsed:
+            award_points(answer.author, "answer_endorsed")
+            notify_answer_endorsed(answer)
+
+        return Response({"is_endorsed": answer.is_endorsed})
+
+    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated, IsQuestionAuthor])
+    @transaction.atomic
+    def accept(self, request, pk=None):
+        answer = self.get_object()
+        question = answer.question
+
+        if question.author_id != request.user.id:
+            return Response(
+                {"detail": "Only the question author can accept an answer."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Only one accepted answer per question.
+        Answer.objects.filter(question=question, is_accepted=True).exclude(
+            pk=answer.pk
+        ).update(is_accepted=False)
+
+        answer.is_accepted = True
+        answer.save(update_fields=["is_accepted"])
+
+        question.is_resolved = True
+        question.save(update_fields=["is_resolved"])
+
+        award_points(answer.author, "answer_accepted")
+        notify_answer_accepted(answer)
+
+        return Response({"is_accepted": True})
+
+    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
+    @transaction.atomic
+    def upvote(self, request, pk=None):
+        answer = self.get_object()
+        existing = AnswerUpvote.objects.filter(answer=answer, user=request.user).first()
+
+        if existing:
+            existing.delete()
+            Answer.objects.filter(pk=answer.pk).update(upvote_count=F("upvote_count") - 1)
+            user_has_upvoted = False
+        else:
+            AnswerUpvote.objects.create(answer=answer, user=request.user)
+            Answer.objects.filter(pk=answer.pk).update(upvote_count=F("upvote_count") + 1)
+            user_has_upvoted = True
+
+        answer.refresh_from_db(fields=["upvote_count"])
+        return Response(
+            {"upvote_count": answer.upvote_count, "user_has_upvoted": user_has_upvoted}
+        )
+
+    def get_object(self):
+        from django.shortcuts import get_object_or_404
+
+        obj = get_object_or_404(Answer, pk=self.kwargs.get("pk"))
+        return obj
+
+
+class TagListView(generics.ListAPIView):
+    """GET /api/v1/forum/tags/ -> simple list of tag names for autocomplete."""
+
+    queryset = Tag.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        names = list(self.get_queryset().values_list("name", flat=True))
+        return Response(names)

@@ -1,0 +1,210 @@
+/* ============================================================
+   EduConnect Design System – CSS Tokens
+   Matches educonnect_design_system.html
+   ============================================================ */
+
+:root {
+  /* Brand colours */
+  --ec-primary:       #4F46E5;
+  --ec-primary-light: #EEF2FF;
+  --ec-primary-mid:   #818CF8;
+  --ec-primary-dark:  #312E81;
+  --ec-accent:        #06B6D4;
+  --ec-accent-light:  #ECFEFF;
+  --ec-success:       #10B981;
+  --ec-warning:       #F59E0B;
+  --ec-danger:        #EF4444;
+
+  /* Surfaces */
+  --ec-surface:  #F8FAFC;
+  --ec-white:    #FFFFFF;
+  --ec-border:   rgba(79, 70, 229, 0.18);
+
+  /* Text */
+  --ec-text:     #1E1B4B;
+  --ec-muted:    #6B7280;
+
+  /* Typography */
+  --font: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(79,70,229,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 16px rgba(79,70,229,0.10), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg: 0 8px 32px rgba(79,70,229,0.14), 0 4px 8px rgba(0,0,0,0.06);
+
+  /* Transitions */
+  --transition: 0.15s ease;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--ec-surface);
+  color: var(--ec-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   Shared component classes
+   ============================================================ */
+
+/* --- Buttons --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  font-family: var(--font);
+  cursor: pointer;
+  border: none;
+  transition: opacity var(--transition), box-shadow var(--transition);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn:hover { opacity: 0.88; }
+.btn:focus-visible { outline: 2px solid var(--ec-primary); outline-offset: 2px; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-primary   { background: var(--ec-primary); color: #fff; }
+.btn-secondary { background: var(--ec-primary-light); color: var(--ec-primary); border: 1px solid rgba(79,70,229,0.25); }
+.btn-accent    { background: var(--ec-accent); color: #fff; }
+.btn-ghost     { background: transparent; color: var(--ec-primary); border: 1px solid var(--ec-border); }
+.btn-danger    { background: #FEF2F2; color: var(--ec-danger); border: 1px solid rgba(239,68,68,0.25); }
+.btn-full      { width: 100%; }
+.btn-lg        { padding: 13px 26px; font-size: 15px; border-radius: var(--radius-lg); }
+.btn-sm        { padding: 6px 13px; font-size: 12px; border-radius: var(--radius-sm); }
+
+/* --- Form elements --- */
+.ec-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ec-muted);
+  margin-bottom: 5px;
+}
+
+.ec-input {
+  width: 100%;
+  padding: 10px 13px;
+  border: 1px solid rgba(79,70,229,0.25);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-family: var(--font);
+  background: var(--ec-white);
+  color: var(--ec-text);
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.ec-input:focus {
+  border-color: var(--ec-primary);
+  box-shadow: 0 0 0 3px rgba(79,70,229,0.12);
+}
+.ec-input::placeholder { color: var(--ec-muted); }
+.ec-input.error { border-color: var(--ec-danger); }
+
+.ec-input-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: var(--space-4); }
+.ec-input-hint  { font-size: 12px; color: var(--ec-muted); }
+.ec-input-error { font-size: 12px; color: var(--ec-danger); }
+
+/* --- Cards --- */
+.ec-card {
+  background: var(--ec-white);
+  border: 0.5px solid var(--ec-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+}
+.ec-card-accent { border-top: 3px solid var(--ec-primary); }
+
+/* --- Badges --- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 500;
+}
+.badge-indigo { background: var(--ec-primary-light); color: var(--ec-primary); }
+.badge-cyan   { background: #ECFEFF; color: #0E7490; }
+.badge-green  { background: #ECFDF5; color: #065F46; }
+.badge-amber  { background: #FFFBEB; color: #92400E; }
+.badge-red    { background: #FEF2F2; color: #991B1B; }
+.badge-gray   { background: #F1F5F9; color: #475569; }
+
+/* --- Avatar --- */
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  border: 2px solid var(--ec-white);
+  flex-shrink: 0;
+}
+.av-indigo { background: var(--ec-primary); color: #fff; }
+.av-cyan   { background: var(--ec-accent); color: #fff; }
+.av-green  { background: var(--ec-success); color: #fff; }
+.av-amber  { background: var(--ec-warning); color: #fff; }
+
+/* --- Divider --- */
+.ec-divider { border: none; border-top: 1px solid var(--ec-border); margin: var(--space-5) 0; }
+
+/* --- Streak pill --- */
+.streak-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(90deg, #4F46E5, #7C3AED);
+  color: white;
+  border-radius: var(--radius-full);
+  padding: 5px 14px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* --- Alert --- */
+.ec-alert {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: var(--space-4);
+}
+.ec-alert-error   { background: #FEF2F2; color: #991B1B; border: 1px solid rgba(239,68,68,0.2); }
+.ec-alert-success { background: #ECFDF5; color: #065F46; border: 1px solid rgba(16,185,129,0.2); }
+.ec-alert-info    { background: var(--ec-primary-light); color: var(--ec-primary-dark); border: 1px solid rgba(79,70,229,0.2); }
