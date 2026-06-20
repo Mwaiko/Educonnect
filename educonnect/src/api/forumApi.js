@@ -12,6 +12,24 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
+// Axios interceptors run outside React, so they can't call useAuth()
+// directly. Instead, on a 401 we clear the stale token and broadcast a
+// DOM event. Whichever AuthContext/AuthProvider is mounted (the current
+// stub, or the real one from feature-auth-profile once merged) can
+// listen for "auth:unauthorized" and update its state / redirect to
+// login accordingly. This keeps forumApi decoupled from whatever auth
+// implementation is active.
+client.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem("access_token");
+      window.dispatchEvent(new CustomEvent("auth:unauthorized"));
+    }
+    return Promise.reject(error);
+  }
+);
+
 /**
  * Forum & Q&A API bindings.
  * Maps directly to the endpoints documented in section 8.3 / 8.4

@@ -29,7 +29,7 @@ class GamificationSummaryView(APIView):
 
         data = {
             "user_id": user.pk,
-            "username": user.username,
+            "username": f"{user.first_name} {user.last_name}".strip() or user.email,
             "total_points": get_total_points(user),
             "current_streak": getattr(user, "streak_count", 0),
             "recent_transactions": PointTransactionSerializer(recent_tx, many=True).data,

@@ -151,7 +151,7 @@ def get_leaderboard(timeframe: str = "all", limit: int = 10):
         qs = qs.filter(created_at__gte=since)
 
     return (
-        qs.values("user__id", "user__username", "user__first_name", "user__last_name")
+        qs.values("user__id", "user__email", "user__first_name", "user__last_name")
         .annotate(total_points=Sum("points_awarded"))
         .order_by("-total_points")[:limit]
     )

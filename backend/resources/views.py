@@ -1,15 +1,25 @@
 from rest_framework import generics, status, filters
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, BasePermission, SAFE_METHODS
 from django.db.models import Q
 from .models import Resource, Vote
 from .serializers import ResourceSerializer, VoteSerializer
 
 
+class IsSubmitterOrReadOnly(BasePermission):
+    """Anyone authenticated can read; only the original submitter can edit/delete."""
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in SAFE_METHODS:
+            return True
+        return obj.submitted_by_id == request.user.id
+
+
 class ResourceListCreateView(generics.ListCreateAPIView):
     serializer_class = ResourceSerializer
-    permission_classes = [IsAuthenticated]
+    # Browsing the list is public; creating a resource still requires login.
+    permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['title', 'tag']
     ordering_fields = ['net_votes', 'created_at']
@@ -31,7 +41,7 @@ class ResourceListCreateView(generics.ListCreateAPIView):
 
 class ResourceDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ResourceSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrReadOnly, IsSubmitterOrReadOnly]
     queryset = Resource.objects.all()
     lookup_field = 'pk'
 

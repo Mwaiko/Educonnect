@@ -7,7 +7,7 @@ urlpatterns = [
     
     # Resource Management
     path('api/v1/resources/', include('resources.urls')),
-    
+    path('api/v1/gamification/', include('apps.gamification.urls')),
     # Auth & User Profile Management
     path("api/v1/auth/", include((auth_urlpatterns, "auth"))),
     path("api/v1/users/", include((user_urlpatterns, "users"))),

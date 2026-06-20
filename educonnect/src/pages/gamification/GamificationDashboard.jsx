@@ -1,17 +1,11 @@
 import { useState, useEffect } from "react";
+import api from "../../api/axios";
 
 // ─── API helpers ──────────────────────────────────────────────────────────────
-const BASE = "/api/gamification";
-const authHeaders = () => ({
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-});
-
-async function fetchJSON(url) {
-  const res = await fetch(url, { headers: authHeaders() });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
+// Uses the shared axios instance (same one the rest of the dashboard uses),
+// so the base URL (e.g. http://.../api/v1) and auth header are handled
+// consistently instead of being duplicated here with a hardcoded prefix.
+const BASE = "/gamification";
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -115,8 +109,8 @@ function Leaderboard({ timeframe, onChangeTimeframe }) {
 
   useEffect(() => {
     setLoading(true);
-    fetchJSON(`${BASE}/leaderboard/?timeframe=${timeframe}`)
-      .then((d) => setEntries(d.leaderboard))
+    api.get(`${BASE}/leaderboard/?timeframe=${timeframe}`)
+      .then((res) => setEntries(res.data.leaderboard ?? res.data))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [timeframe]);
@@ -170,9 +164,11 @@ export default function GamificationDashboard() {
   const [timeframe, setTimeframe] = useState("weekly");
 
   useEffect(() => {
-    fetchJSON(`${BASE}/me/`)
-      .then(setSummary)
-      .catch((e) => setError(e.message))
+    api.get(`${BASE}/me/`)
+      .then((res) => setSummary(res.data))
+      .catch((e) => setError(e.response?.status === 404
+        ? "This feature isn't available yet."
+        : e.message))
       .finally(() => setLoading(false));
   }, []);
 
@@ -192,7 +188,10 @@ export default function GamificationDashboard() {
       </div>
     );
 
-  const streak = summary.current_streak;
+  const streak = summary.current_streak ?? 0;
+  const totalPoints = summary.total_points ?? 0;
+  const streakHistory = summary.streak_history ?? [];
+  const recentTransactions = summary.recent_transactions ?? [];
   const streakLabel =
     streak === 0
       ? "No streak — log in daily to start one!"
@@ -223,7 +222,7 @@ export default function GamificationDashboard() {
         <section className="stats-row">
           <StatCard
             label="Total Points"
-            value={summary.total_points.toLocaleString()}
+            value={totalPoints.toLocaleString()}
             accent="#f97316"
           />
           <StatCard
@@ -234,7 +233,7 @@ export default function GamificationDashboard() {
           <StatCard
             label="Events This Streak"
             value={
-              summary.streak_history[0]?.events_count ?? 0
+              streakHistory[0]?.events_count ?? 0
             }
             accent="#10b981"
             sub="today"
@@ -245,7 +244,7 @@ export default function GamificationDashboard() {
         <section className="card">
           <h2 className="section-title">30-Day Activity</h2>
           <p className="section-sub">Each square = one day. Orange = active.</p>
-          <StreakCalendar history={summary.streak_history} />
+          <StreakCalendar history={streakHistory} />
         </section>
 
         {/* ── Bottom split ── */}
@@ -253,7 +252,7 @@ export default function GamificationDashboard() {
           {/* Recent activity */}
           <section className="card">
             <h2 className="section-title">Recent Activity</h2>
-            <TransactionList transactions={summary.recent_transactions} />
+            <TransactionList transactions={recentTransactions} />
           </section>
 
           {/* Leaderboard */}

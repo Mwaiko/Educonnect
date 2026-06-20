@@ -7,6 +7,7 @@ import QuestionDetailPage from "./forum/QuestionDetailPage";
 import GamificationDashboard from "./gamification/GamificationDashboard";
 import ResourceList       from "./Resources/ResourceList";
 import ResourceForm       from "./Resources/ResourceForm";
+import ProfilePage        from "./profile/ProfilePage";
 // ═════════════════════════════════════════════════════════════════════════════
 //  THEME SYSTEM — Light & Dark Mode
 // ═════════════════════════════════════════════════════════════════════════════
@@ -915,24 +916,87 @@ function GuestPromoPanel({ C }) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
+//  Helpers for eloquent degraded states (missing/404'd endpoints, empty data)
+// ═════════════════════════════════════════════════════════════════════════════
+
+// Renders inline wherever a section has nothing to show — either because the
+// backend genuinely has no data yet, or because that section's endpoint
+// 404'd / errored. Message adapts to which case it is.
+function SectionEmptyState({ C, status, emptyTitle, emptyHint, icon = "📭" }) {
+  const copy = status === "unavailable"
+    ? { icon: "🛠️", title: "Coming soon", hint: "This part of the dashboard isn't connected yet." }
+    : status === "error"
+      ? { icon: "⚠️", title: "Couldn't load this", hint: "Something went wrong fetching this section." }
+      : { icon, title: emptyTitle, hint: emptyHint };
+
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      gap: 6, padding: "28px 12px", textAlign: "center",
+    }}>
+      <div style={{ fontSize: 26, opacity: 0.6 }}>{copy.icon}</div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: C.text }}>{copy.title}</div>
+      {copy.hint && <div style={{ fontSize: 12, color: C.textSecondary, maxWidth: 260, lineHeight: 1.5 }}>{copy.hint}</div>}
+    </div>
+  );
+}
+
+// Small dismissible banner summarizing which sections couldn't load, with a
+// one-click retry — shown above the dashboard during a partial outage.
+function PartialOutageBanner({ C, missingLabels, onRetry, onDismiss }) {
+  if (missingLabels.length === 0) return null;
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap",
+      background: C.warningLight, border: `1px solid ${C.warning}40`, borderRadius: 12,
+      padding: "10px 16px", fontSize: 12.5, color: C.text,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 15 }}>⚠️</span>
+        <span>
+          <strong>{missingLabels.length === 1 ? "One section" : `${missingLabels.length} sections`}</strong>{" "}
+          couldn't load right now ({missingLabels.join(", ")}). The rest of your dashboard is up to date.
+        </span>
+      </div>
+      <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+        <button onClick={onRetry} style={{ padding: "5px 12px", borderRadius: 8, border: "none", background: C.warning, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+          Retry
+        </button>
+        <button onClick={onDismiss} style={{ padding: "5px 10px", borderRadius: 8, border: "none", background: "transparent", color: C.textSecondary, fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+          Dismiss
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 //  AUTHENTICATED DASHBOARD (with simulated data fetching)
 // ═════════════════════════════════════════════════════════════════════════════
 function DashboardView({ C }) {
+  const navigate = useNavigate();
   const [notifOpen, setNotifOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [greeting, setGreeting] = useState("Good morning");
 
-  // Simulated data states
+  // Data states — arrays/objects default to empty rather than null so a
+  // failed or not-yet-implemented endpoint degrades to "nothing here yet"
+  // instead of crashing a .map()/.filter() call downstream.
   const [user, setUser] = useState(null);
-  const [stats, setStats] = useState(null);
-  const [questions, setQuestions] = useState(null);
-  const [studyGroups, setStudyGroups] = useState(null);
-  const [notifications, setNotifications] = useState(null);
-  const [leaderboard, setLeaderboard] = useState(null);
-  const [resources, setResources] = useState(null);
-  const [activity, setActivity] = useState(null);
+  const [stats, setStats] = useState([]);
+  const [questions, setQuestions] = useState([]);
+  const [studyGroups, setStudyGroups] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [resources, setResources] = useState([]);
+  const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Per-section fetch status: "unavailable" (404 — endpoint not wired up yet),
+  // "error" (network/5xx/etc), or absent (loaded fine).
+  const [errors, setErrors] = useState({});
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -941,39 +1005,59 @@ function DashboardView({ C }) {
     else setGreeting("Good evening");
   }, []);
 
-  // Fetch all dashboard data from real backend
+  // Fetch all dashboard data from real backend. Each section is fetched
+  // independently — one missing/broken endpoint never blocks the rest of
+  // the dashboard from rendering.
   useEffect(() => {
     let mounted = true;
     setLoading(true);
 
     const fetchData = async () => {
       const calls = [
-        [dashboardApi.getUser,          setUser],
-        [dashboardApi.getStats,         setStats],
-        [dashboardApi.getQuestions,     setQuestions],
-        [dashboardApi.getStudyGroups,   setStudyGroups],
-        [dashboardApi.getNotifications, setNotifications],
-        [dashboardApi.getLeaderboard,   setLeaderboard],
-        [dashboardApi.getResources,     setResources],
-        [dashboardApi.getActivity,      setActivity],
+        ["user",          dashboardApi.getUser,          setUser],
+        ["stats",         dashboardApi.getStats,         setStats],
+        ["questions",     dashboardApi.getQuestions,     setQuestions],
+        ["studyGroups",   dashboardApi.getStudyGroups,   setStudyGroups],
+        ["notifications", dashboardApi.getNotifications, setNotifications],
+        ["leaderboard",   dashboardApi.getLeaderboard,   setLeaderboard],
+        ["resources",     dashboardApi.getResources,     setResources],
+        ["activity",      dashboardApi.getActivity,      setActivity],
       ];
 
-      await Promise.allSettled(
-        calls.map(async ([fn, setter]) => {
-          try {
-            const data = await fn();
-            if (mounted) setter(data);
-          } catch (e) {
-            console.error("Dashboard fetch error:", e);
-          }
+      const results = await Promise.allSettled(
+        calls.map(async ([key, fn, setter]) => {
+          const data = await fn();
+          if (mounted) setter(data ?? []);
         })
       );
-      if (mounted) setLoading(false);
+
+      if (!mounted) return;
+
+      const nextErrors = {};
+      results.forEach((result, i) => {
+        if (result.status !== "rejected") return;
+        const [key] = calls[i];
+        const status = result.reason?.response?.status;
+        if (status === 404) {
+          // Endpoint isn't implemented on the backend yet — this is an
+          // expected, recoverable state during development, not a bug to
+          // surface as a scary stack trace. Log once, quietly.
+          nextErrors[key] = "unavailable";
+          console.warn(`Dashboard: "${key}" endpoint not found (404) — showing fallback UI for that section.`);
+        } else {
+          nextErrors[key] = "error";
+          console.error(`Dashboard: failed to load "${key}"`, result.reason);
+        }
+      });
+      setErrors(nextErrors);
+      setLoading(false);
     };
 
     fetchData();
     return () => { mounted = false; };
-  }, []);
+  }, [refreshKey]);
+
+  const retry = () => { setBannerDismissed(false); setRefreshKey(k => k + 1); };
 
   if (loading) {
     return (
@@ -995,22 +1079,50 @@ function DashboardView({ C }) {
     );
   }
 
-  // Fallback state if backend implementation is missing endpoints or has empty data records
-  if (!user || !stats || !questions || !studyGroups || !notifications || !leaderboard || !resources || !activity) {
+  // Full outage: every single section failed (e.g. wrong API base URL, backend
+  // down, or none of the routes exist yet). In that case there's nothing
+  // meaningful to render, so show one clear, actionable screen instead of a
+  // dashboard full of empty boxes.
+  const sectionKeys = ["user", "stats", "questions", "studyGroups", "notifications", "leaderboard", "resources", "activity"];
+  const failedCount = sectionKeys.filter(k => errors[k]).length;
+  const allFailed = failedCount === sectionKeys.length;
+
+  if (allFailed) {
+    const anyUnavailable = sectionKeys.some(k => errors[k] === "unavailable");
     return (
-      <div style={{ 
-        flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", 
-        gap: 16, background: C.surfaceElevated, borderRadius: 16, border: `1px solid ${C.border}`, 
-        minHeight: 500, boxShadow: C.cardShadow, padding: 40 
+      <div style={{
+        flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        gap: 16, background: C.surfaceElevated, borderRadius: 16, border: `1px solid ${C.border}`,
+        minHeight: 500, boxShadow: C.cardShadow, padding: 40,
       }}>
         <div style={{ fontSize: 64 }}>📊</div>
-        <div style={{ fontSize: 20, fontWeight: 700, color: C.text }}>Setting up your profile space</div>
-        <div style={{ fontSize: 14, color: C.textSecondary, textAlign: "center", maxWidth: 400, lineHeight: 1.6 }}>
-          Welcome to the dashboard! Active workspace data and custom tracking elements will be added later once endpoint configurations are finished.
+        <div style={{ fontSize: 20, fontWeight: 700, color: C.text }}>
+          {anyUnavailable ? "Setting up your profile space" : "We're having trouble connecting"}
         </div>
+        <div style={{ fontSize: 14, color: C.textSecondary, textAlign: "center", maxWidth: 400, lineHeight: 1.6 }}>
+          {anyUnavailable
+            ? "Welcome to the dashboard! These endpoints aren't wired up on the backend yet — once they are, your data will show up here automatically."
+            : "We couldn't reach the server just now. Check your connection and try again."}
+        </div>
+        <button
+          onClick={retry}
+          style={{
+            marginTop: 4, padding: "10px 20px", borderRadius: 10, border: "none",
+            background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer",
+          }}
+        >
+          Try again
+        </button>
       </div>
     );
   }
+
+  // Partial outage: render the dashboard with whatever data did load, and
+  // show a small dismissible banner calling out what's temporarily missing.
+  const safeUser = user ?? {
+    name: "there", initials: "?", streak: 0, role: "Member",
+    points: 0, questionsAsked: 0, answersGiven: 0, resourcesShared: 0, rank: "—",
+  };
 
   const unreadCount = notifications.filter(n => !n.read).length;
   const markAsRead = (id) => {
@@ -1023,8 +1135,20 @@ function DashboardView({ C }) {
   };
   const filteredQuestions = activeTab === "all" ? questions : questions.filter(q => q.status === activeTab);
 
+  const sectionLabels = {
+    user: "Profile", stats: "Stats", questions: "Questions", studyGroups: "Study Groups",
+    notifications: "Notifications", leaderboard: "Leaderboard", resources: "Resources", activity: "Activity",
+  };
+  const missingLabels = bannerDismissed ? [] : sectionKeys.filter(k => errors[k]).map(k => sectionLabels[k]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <PartialOutageBanner
+        C={C}
+        missingLabels={missingLabels}
+        onRetry={retry}
+        onDismiss={() => setBannerDismissed(true)}
+      />
       {/* Welcome Header */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -1035,7 +1159,7 @@ function DashboardView({ C }) {
         <div style={{ position: "absolute", top: -30, right: -30, width: 180, height: 180, borderRadius: "50%", background: `radial-gradient(circle, ${C.primary}12, transparent 70%)`, pointerEvents: "none" }} />
         <div style={{ position: "relative", zIndex: 1 }}>
           <div style={{ fontSize: 22, fontWeight: 700, color: C.text, marginBottom: 4 }}>
-            {greeting}, {user.name.split(" ")[0]} 👋
+            {greeting}, {safeUser.name.split(" ")[0]} 👋
           </div>
           <div style={{ fontSize: 13, color: C.textSecondary }}>Here's what's happening in your learning community today.</div>
         </div>
@@ -1057,7 +1181,7 @@ function DashboardView({ C }) {
             boxShadow: `0 4px 12px ${C.primary}40`,
             animation: "pulse 2s infinite",
           }}>
-            <span style={{ fontSize: 15 }}>🔥</span>{user.streak}-day streak
+            <span style={{ fontSize: 15 }}>🔥</span>{safeUser.streak}-day streak
           </div>
 
           <div style={{ position: "relative" }}>
@@ -1083,19 +1207,23 @@ function DashboardView({ C }) {
                   <button onClick={markAllRead} style={{ fontSize: 11, color: C.primary, background: "none", border: "none", cursor: "pointer", fontWeight: 500 }}>Mark all read</button>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 300, overflowY: "auto" }}>
-                  {notifications.map(n => <NotifItem key={n.id} n={n} onRead={markAsRead} C={C} />)}
+                  {notifications.length > 0
+                    ? notifications.map(n => <NotifItem key={n.id} n={n} onRead={markAsRead} C={C} />)
+                    : <SectionEmptyState C={C} status={errors.notifications} icon="🔔" emptyTitle="No notifications" emptyHint="You're all caught up." />}
                 </div>
               </div>
             )}
           </div>
 
-          <Avatar initials={user.initials} color={C.accent} size={40} ring C={C} />
+          <Avatar initials={safeUser.initials} color={C.accent} size={40} ring C={C} />
         </div>
       </div>
 
       {/* Stats Grid */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
-        {stats.map((s, i) => <StatCard key={i} stat={s} C={C} />)}
+        {stats.length > 0
+          ? stats.map((s, i) => <StatCard key={i} stat={s} C={C} />)
+          : <SectionEmptyState C={C} status={errors.stats} icon="📈" emptyTitle="No stats yet" emptyHint="Stats will appear once there's activity to measure." />}
       </div>
 
       {/* Personal stats bar */}
@@ -1106,18 +1234,18 @@ function DashboardView({ C }) {
         boxShadow: C.cardShadow, flexWrap: "wrap",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 200 }}>
-          <Avatar initials={user.initials} color={C.accent} size={42} ring C={C} />
+          <Avatar initials={safeUser.initials} color={C.accent} size={42} ring C={C} />
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{user.name}</div>
-            <div style={{ fontSize: 12, color: C.textSecondary }}>{user.role} · Joined Jan 2025</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{safeUser.name}</div>
+            <div style={{ fontSize: 12, color: C.textSecondary }}>{safeUser.role} · Joined Jan 2025</div>
           </div>
         </div>
         {[
-          { label: "Points", value: user.points, color: C.primary },
-          { label: "Questions", value: user.questionsAsked, color: C.accent },
-          { label: "Answers", value: user.answersGiven, color: C.success },
-          { label: "Resources", value: user.resourcesShared, color: C.warning },
-          { label: "Rank", value: `#${user.rank}`, color: C.danger },
+          { label: "Points", value: safeUser.points, color: C.primary },
+          { label: "Questions", value: safeUser.questionsAsked, color: C.accent },
+          { label: "Answers", value: safeUser.answersGiven, color: C.success },
+          { label: "Resources", value: safeUser.resourcesShared, color: C.warning },
+          { label: "Rank", value: `#${safeUser.rank}`, color: C.danger },
         ].map((s) => (
           <div key={s.label} style={{ flex: 1, textAlign: "center", borderLeft: `1px solid ${C.border}`, padding: "0 20px", minWidth: 80 }}>
             <div style={{ fontSize: 20, fontWeight: 800, color: s.color }}>{s.value}</div>
@@ -1158,7 +1286,9 @@ function DashboardView({ C }) {
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {filteredQuestions.map(q => <QuestionCard key={q.id} q={q} C={C} />)}
+              {filteredQuestions.length > 0
+                ? filteredQuestions.map(q => <QuestionCard key={q.id} q={q} C={C} />)
+                : <SectionEmptyState C={C} status={errors.questions} icon="💬" emptyTitle="No questions yet" emptyHint="Be the first to start a discussion." />}
             </div>
             <button style={{ width: "100%", marginTop: 16, padding: "10px", borderRadius: 10, border: `1px dashed ${C.border}`, background: C.surface, color: C.primary, fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.2s ease" }}>
               View all questions →
@@ -1177,7 +1307,9 @@ function DashboardView({ C }) {
               </button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
-              {studyGroups.map(g => <StudyGroupCard key={g.id} group={g} C={C} />)}
+              {studyGroups.length > 0
+                ? studyGroups.map(g => <StudyGroupCard key={g.id} group={g} C={C} />)
+                : <SectionEmptyState C={C} status={errors.studyGroups} icon="👥" emptyTitle="No study groups yet" emptyHint="Create one to start collaborating with peers." />}
             </div>
           </div>
 
@@ -1188,7 +1320,9 @@ function DashboardView({ C }) {
               <div style={{ fontSize: 12, color: C.textSecondary }}>Community-curated learning materials</div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {resources.map(r => <ResourceCard key={r.id} r={r} C={C} />)}
+              {resources.length > 0
+                ? resources.map(r => <ResourceCard key={r.id} r={r} C={C} />)
+                : <SectionEmptyState C={C} status={errors.resources} icon="📚" emptyTitle="No resources yet" emptyHint="Shared resources will show up here." />}
             </div>
           </div>
         </div>
@@ -1205,7 +1339,9 @@ function DashboardView({ C }) {
               <Badge label="Weekly" bg={C.warningLight} color={C.warning} C={C} />
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {leaderboard.map(p => <LeaderboardRow key={p.rank} p={p} C={C} />)}
+              {leaderboard.length > 0
+                ? leaderboard.map(p => <LeaderboardRow key={p.rank} p={p} C={C} />)
+                : <SectionEmptyState C={C} status={errors.leaderboard} icon="🏆" emptyTitle="No rankings yet" emptyHint="Rankings update weekly as the community gets active." />}
             </div>
             <button style={{ width: "100%", marginTop: 12, padding: "10px", borderRadius: 10, border: "none", background: C.primaryLight, color: C.primary, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease" }}>
               View full leaderboard →
@@ -1219,7 +1355,9 @@ function DashboardView({ C }) {
               <div style={{ fontSize: 12, color: C.textSecondary }}>What's happening right now</div>
             </div>
             <div>
-              {activity.map(a => <ActivityItem key={a.id} activity={a} C={C} />)}
+              {activity.length > 0
+                ? activity.map(a => <ActivityItem key={a.id} activity={a} C={C} />)
+                : <SectionEmptyState C={C} status={errors.activity} icon="⚡" emptyTitle="No recent activity" emptyHint="Live activity will appear here as it happens." />}
             </div>
           </div>
 
@@ -1229,18 +1367,18 @@ function DashboardView({ C }) {
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 16 }}>Get things done faster</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {[
-                { icon: "💬", label: "Ask a question", desc: "Get help from the community" },
-                { icon: "👥", label: "Join a study group", desc: "Collaborate with peers" },
-                { icon: "📚", label: "Share a resource", desc: "Contribute to the library" },
+                { icon: "💬", label: "Ask a question", desc: "Get help from the community", path: "/forum/ask" },
+                { icon: "👥", label: "Join a study group", desc: "Collaborate with peers", path: "/groups" },
+                { icon: "📚", label: "Share a resource", desc: "Contribute to the library", path: "/resources" },
               ].map((action, i) => (
-                <button key={i} style={{
+                <button key={i} onClick={() => navigate(action.path)} style={{
                   display: "flex", alignItems: "center", gap: 12, padding: "12px 14px",
                   borderRadius: 10, background: "rgba(255,255,255,0.08)",
                   border: "1px solid rgba(255,255,255,0.1)", color: "#fff",
                   cursor: "pointer", transition: "all 0.2s ease", textAlign: "left", width: "100%",
                 }}>
                   <span style={{ fontSize: 20 }}>{action.icon}</span>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{action.label}</div>
                     <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{action.desc}</div>
                   </div>
@@ -1277,12 +1415,45 @@ function ForumSection({ C }) {
 
 // ─── Resources section wrapper ────────────────────────────────────────────────
 function ResourcesSection({ C }) {
-  return <PlaceholderView label="Resources" icon="📚" C={C} hint="Create src/api/resources.js and install styled-components to activate." />;
+  const [showForm, setShowForm] = useState(false);
+
+  return (
+    <>
+      <ResourceList onAdd={() => setShowForm(true)} />
+      {showForm && (
+        <div
+          style={{
+            position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 1000, padding: 20,
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false); }}
+        >
+          <div style={{
+            background: "#fff", borderRadius: 16, padding: 24, width: "100%",
+            maxWidth: 480, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 48px rgba(0,0,0,0.25)",
+          }}>
+            {/* NOTE: prop names below (onClose/onSuccess) are a best guess —
+               confirm they match your actual ResourceForm implementation. */}
+            <ResourceForm
+              onClose={() => setShowForm(false)}
+              onSuccess={() => setShowForm(false)}
+            />
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
 // ─── Gamification section ─────────────────────────────────────────────────────
 function GamificationSection({ C }) {
-  return <PlaceholderView label="Progress & Leaderboard" icon="🏆" C={C} comingSoon={false} hint="Import GamificationDashboard to activate." />;
+  return <GamificationDashboard />;
+}
+
+// ─── Profile section ───────────────────────────────────────────────────────────
+function ProfileSection({ C }) {
+  return <ProfilePage C={C} />;
 }
 
 // ─── Section renderer ─────────────────────────────────────────────────────────
@@ -1291,6 +1462,7 @@ function ActiveSection({ active, C }) {
     case "forum":        return <ForumSection C={C} />;
     case "resources":    return <ResourcesSection C={C} />;
     case "gamification": return <GamificationSection C={C} />;
+    case "profile":      return <ProfileSection C={C} />;
     default:             return null;
   }
 }
@@ -1396,7 +1568,7 @@ export default function MainDashboard() {
                   C={C}
                 />
             )
-          : ["forum", "resources", "gamification"].includes(active)
+          : ["forum", "resources", "gamification", "profile"].includes(active)
             ? <ActiveSection active={active} C={C} />
             : <PlaceholderView
                 label={NAV_ITEMS.find(n => n.key === active)?.label ?? active}

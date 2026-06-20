@@ -3,15 +3,27 @@ import styled, { createGlobalStyle } from 'styled-components';
 import { getResources, voteResource, deleteResource } from '../../api/resources';
 
 const GlobalStyle = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Inter', system-ui, sans-serif; background: #F8FAFC; color: #1E1B4B; }
+  /* Inter font is loaded via a <link> tag below instead of @import — styled-components'
+     createGlobalStyle can't reliably process @import at runtime (see console warning). */
+  /* Scoped reset only — deliberately not touching the page body here, since
+     this component now renders inside the main dashboard shell (which
+     controls its own light/dark background). Forcing body styles from a
+     sub-section would override the dashboard's theme whenever this tab is open. */
+  .resource-list-page, .resource-list-page *, .resource-list-page *::before, .resource-list-page *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
 `;
 
 const Page = styled.div`
   padding: 2rem;
   max-width: 1200px;
   margin: 0 auto;
+  background: #F8FAFC;
+  color: #1E1B4B;
+  border-radius: 16px;
 `;
 const TopBar = styled.div`
   display: flex; align-items: center; justify-content: space-between;
@@ -117,6 +129,7 @@ const Spinner = styled.div`
 export default function ResourceList({ onAdd }) {
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [tag, setTag] = useState('');
   const [resourceType, setResourceType] = useState('');
@@ -129,9 +142,21 @@ export default function ResourceList({ onAdd }) {
       if (tag) params.tag = tag;
       if (resourceType) params.resource_type = resourceType;
       const res = await getResources(params);
-      setResources(res.data.results || res.data);
+      const list = Array.isArray(res.data?.results)
+        ? res.data.results
+        : Array.isArray(res.data)
+        ? res.data
+        : [];
+      setResources(list);
+      setError(null);
     } catch (err) {
       console.error(err);
+      setResources([]);
+      setError(
+        err?.response?.status === 401
+          ? 'You need to be logged in to view resources.'
+          : 'Something went wrong loading resources. Please try again.'
+      );
     } finally {
       setLoading(false);
     }
@@ -169,7 +194,11 @@ export default function ResourceList({ onAdd }) {
   return (
     <>
       <GlobalStyle />
-      <Page>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+      />
+      <Page className="resource-list-page">
         <TopBar>
           <TitleGroup>
             <PageTitle>Resource Repository</PageTitle>
@@ -202,6 +231,10 @@ export default function ResourceList({ onAdd }) {
         </FilterBar>
         {loading ? (
           <Loading><Spinner />Loading resources...</Loading>
+        ) : error ? (
+          <EmptyState>
+            <p style={{ fontSize: '15px', fontWeight: '500', color: '#1E1B4B', marginBottom: '6px' }}>{error}</p>
+          </EmptyState>
         ) : resources.length === 0 ? (
           <EmptyState>
             <p style={{ fontSize: '15px', fontWeight: '500', color: '#1E1B4B', marginBottom: '6px' }}>No resources found</p>
