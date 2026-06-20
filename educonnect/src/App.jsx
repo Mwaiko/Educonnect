@@ -1,8 +1,5 @@
-/* ============================================================
-   App.jsx – EduConnect Frontend Router & App Entry
-   ============================================================ */
 import { useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // Auth & Profile Pages
 import LoginPage          from "./pages/LoginPage";
@@ -12,11 +9,16 @@ import UserProfilePage    from "./pages/UserProfilePage";
 import EditProfilePage    from "./pages/EditProfilePage";
 
 // The Real Main Dashboard View (imported from your dashboard.jsx)
-import MainDashboard      from "./pages/dashboard"; 
+import MainDashboard      from "./pages/dashboard";
 
-// Resource Management Pages (Accessible from sub-routes if needed)
+// Resource Management Pages
 import ResourceList       from './pages/Resources/ResourceList';
 import ResourceForm       from './pages/Resources/ResourceForm';
+
+// Study Group Pages
+import GroupList          from './pages/Groups/GroupList';
+import GroupDetail        from './pages/Groups/GroupDetail';
+import GroupForm          from './pages/Groups/GroupForm';
 
 import "./styles/tokens.css";
 
@@ -26,23 +28,49 @@ function RequireAuth({ children }) {
   return token ? children : <Navigate to="/login" replace />;
 }
 
-/* Kept intact if you want to use it on an explicit /resources path later */
+/* Resources page wrapper with its own add-form modal state */
 function DashboardResources() {
   const [showForm, setShowForm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-
   const handleSuccess = () => setRefreshKey(k => k + 1);
 
   return (
     <>
-      <ResourceList
+      <ResourceList key={refreshKey} onAdd={() => setShowForm(true)} />
+      {showForm && (
+        <ResourceForm onClose={() => setShowForm(false)} onSuccess={handleSuccess} />
+      )}
+    </>
+  );
+}
+
+/* Study Groups page wrapper with list/detail/create-form state */
+function DashboardGroups() {
+  const [showForm, setShowForm] = useState(false);
+  const [selectedGroupId, setSelectedGroupId] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const handleSuccess = () => setRefreshKey(k => k + 1);
+
+  if (selectedGroupId) {
+    return (
+      <GroupDetail
+        groupId={selectedGroupId}
+        onBack={() => setSelectedGroupId(null)}
+      />
+    );
+  }
+
+  return (
+    <>
+      <GroupList
         key={refreshKey}
         onAdd={() => setShowForm(true)}
+        onView={(id) => setSelectedGroupId(id)}
       />
       {showForm && (
-        <ResourceForm
+        <GroupForm
           onClose={() => setShowForm(false)}
-          onSuccess={handleSuccess}
+          onSuccess={() => { handleSuccess(); setShowForm(false); }}
         />
       )}
     </>
@@ -61,16 +89,19 @@ export default function App() {
         {/* Root Redirect straight to Dashboard */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-        {/* REMOVED RequireAuth here. 
-          MainDashboard internally displays the guest panel if logged out,
-          and the authenticatd panel if logged in.
-        */}
         <Route path="/dashboard" element={<MainDashboard />} />
 
         {/* Protected Resources Sub-Route */}
         <Route path="/resources" element={
           <RequireAuth>
             <DashboardResources />
+          </RequireAuth>
+        } />
+
+        {/* Protected Study Groups Sub-Route */}
+        <Route path="/groups" element={
+          <RequireAuth>
+            <DashboardGroups />
           </RequireAuth>
         } />
 
