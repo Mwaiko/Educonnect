@@ -12,7 +12,5 @@ urlpatterns = [
     path('api/v1/users/', include((user_urlpatterns, 'users'))),
     path('api/v1/chat/', include('chat.urls')),
     path('api/v1/notifications/', include('notifications.urls')),
-    path('api/v1/forum/', include('apps.forum.urls')),
-    path('api/v1/gamification/', include('apps.gamification.urls')),
     path('api/v1/dashboard/', include((dashboard_urlpatterns, 'dashboard'))),
 ]
