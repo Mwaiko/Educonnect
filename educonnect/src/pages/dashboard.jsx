@@ -8,6 +8,7 @@ import GamificationDashboard from "./gamification/GamificationDashboard";
 import ResourceList       from "./Resources/ResourceList";
 import ResourceForm       from "./Resources/ResourceForm";
 import ProfilePage        from "./profile/ProfilePage";
+import GroupList          from "./Groups/GroupList";
 // ═════════════════════════════════════════════════════════════════════════════
 //  THEME SYSTEM — Light & Dark Mode
 // ═════════════════════════════════════════════════════════════════════════════
@@ -60,7 +61,7 @@ const dashboardApi = {
   getUser:          () => api.get("/auth/me/").then(r => r.data),
   getStats:         () => api.get("/dashboard/stats/").then(r => r.data),
   getQuestions:     () => api.get("/forum/questions/?page_size=5&ordering=-created_at").then(r => r.data.results ?? r.data),
-  getStudyGroups:   () => api.get("/study-groups/?page_size=5").then(r => r.data.results ?? r.data),
+  getStudyGroups:   () => api.get("/groups/?page_size=5").then(r => r.data.results ?? r.data),
   getNotifications: () => api.get("/notifications/").then(r => r.data.results ?? r.data),
   getLeaderboard:   () => api.get("/gamification/leaderboard/?timeframe=weekly").then(r => r.data.leaderboard ?? r.data),
   getResources:     () => api.get("/resources/?page_size=5&ordering=-net_votes").then(r => r.data.results ?? r.data),
@@ -1159,7 +1160,7 @@ function DashboardView({ C }) {
         <div style={{ position: "absolute", top: -30, right: -30, width: 180, height: 180, borderRadius: "50%", background: `radial-gradient(circle, ${C.primary}12, transparent 70%)`, pointerEvents: "none" }} />
         <div style={{ position: "relative", zIndex: 1 }}>
           <div style={{ fontSize: 22, fontWeight: 700, color: C.text, marginBottom: 4 }}>
-            {greeting}, {safeUser.name.split(" ")[0]} 👋
+            {greeting}, {safeUser?.first_name + "    " + safeUser?.last_name}
           </div>
           <div style={{ fontSize: 13, color: C.textSecondary }}>Here's what's happening in your learning community today.</div>
         </div>
@@ -1409,8 +1410,9 @@ function PlaceholderView({ label, icon, C, hint }) {
 }
 
 // ─── Forum sub-router ─────────────────────────────────────────────────────────
+// QuestionFeed owns its own layout/theme (forumTheme.css), so it doesn't take C.
 function ForumSection({ C }) {
-  return <PlaceholderView label="Forum & Q&A" icon="💬" C={C} comingSoon={false} hint="Wire forumApi + useAuth to activate." />;
+  return <QuestionFeed />;
 }
 
 // ─── Resources section wrapper ────────────────────────────────────────────────
@@ -1456,6 +1458,21 @@ function ProfileSection({ C }) {
   return <ProfilePage C={C} />;
 }
 
+// ─── Study Groups section ───────────────────────────────────────────────────────
+// GroupList owns its own layout/theme (styled-components), so it doesn't take C.
+// onAdd/onView navigate to real routes, matching the convention QuestionFeed
+// already uses (Link to "/forum/ask", "/forum/questions/:id") — confirm
+// "/groups/new" and "/groups/:id" are mounted in your router.
+function GroupsSection({ C }) {
+  const navigate = useNavigate();
+  return (
+    <GroupList
+      onAdd={() => navigate("/groups/new")}
+      onView={(id) => navigate(`/groups/${id}`)}
+    />
+  );
+}
+
 // ─── Section renderer ─────────────────────────────────────────────────────────
 function ActiveSection({ active, C }) {
   switch (active) {
@@ -1463,6 +1480,7 @@ function ActiveSection({ active, C }) {
     case "resources":    return <ResourcesSection C={C} />;
     case "gamification": return <GamificationSection C={C} />;
     case "profile":      return <ProfileSection C={C} />;
+    case "groups":       return <GroupsSection C={C} />;
     default:             return null;
   }
 }
@@ -1568,7 +1586,7 @@ export default function MainDashboard() {
                   C={C}
                 />
             )
-          : ["forum", "resources", "gamification", "profile"].includes(active)
+          : ["forum", "resources", "gamification", "profile", "groups"].includes(active)
             ? <ActiveSection active={active} C={C} />
             : <PlaceholderView
                 label={NAV_ITEMS.find(n => n.key === active)?.label ?? active}

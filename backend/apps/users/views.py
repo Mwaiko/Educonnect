@@ -1,6 +1,7 @@
 from django.core.mail import send_mail
 from django.conf import settings
 from django.shortcuts import get_object_or_404
+from django.contrib.humanize.templatetags.humanize import naturaltime
 
 from rest_framework import status
 from rest_framework.views import APIView
@@ -21,6 +22,13 @@ from .serializers import (
     PublicUserProfileSerializer,
     UpdateProfileSerializer,
 )
+
+# NOTE: adjust these import paths to match your actual app labels if they
+# differ (e.g. "qa" instead of "forum", "study_groups" instead of "groups").
+from apps.forum.models import Question, Answer, QuestionUpvote, AnswerUpvote
+from resources.models import Resource, Vote
+from groups.models import Membership
+from apps.gamification.models import PointTransaction
 
 
 # ─────────────────────────────────────────────────────────────
@@ -213,3 +221,127 @@ class PublicUserProfileView(APIView):
         user = get_object_or_404(User, pk=pk, is_active=True)
         serializer = PublicUserProfileSerializer(user)
         return Response(serializer.data)
+class AuthMeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserProfileSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class DashboardStatsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        # Interactions: every contribution the user has made across the platform.
+        questions_asked = Question.objects.filter(author=user).count()
+        answers_given = Answer.objects.filter(author=user).count()
+        resources_submitted = Resource.objects.filter(submitted_by=user).count()
+        votes_cast = (
+            QuestionUpvote.objects.filter(user=user).count()
+            + AnswerUpvote.objects.filter(user=user).count()
+            + Vote.objects.filter(user=user).count()
+        )
+        total_interactions = (
+            questions_asked + answers_given + resources_submitted + votes_cast
+        )
+
+        # Completed tasks: answers that earned recognition, plus questions the
+        # user asked that ended up resolved.
+        accepted_answers = Answer.objects.filter(author=user, is_accepted=True).count()
+        endorsed_only_answers = (
+            Answer.objects.filter(author=user, is_endorsed=True)
+            .exclude(is_accepted=True)
+            .count()
+        )
+        resolved_questions = Question.objects.filter(
+            author=user, is_resolved=True
+        ).count()
+        completed_tasks = accepted_answers + endorsed_only_answers + resolved_questions
+
+        # Hours spent: there is no duration field tracked anywhere yet (sessions,
+        # logins, etc. don't record elapsed time). As a stand-in, this estimates
+        # 1 hour per attended study-group session logged in PointTransaction.
+        # Replace with real session-duration tracking once it exists.
+        sessions_attended = PointTransaction.objects.filter(
+            user=user, event_type=PointTransaction.EventType.ATTEND_SESSION
+        ).count()
+        hours_spent = sessions_attended
+
+        stats_data = {
+            "total_interactions": total_interactions,
+            "hours_spent": hours_spent,
+            "completed_tasks": completed_tasks,
+            "global_rank": user.rank_position,
+        }
+
+        return Response(stats_data, status=status.HTTP_200_OK)
+
+
+class DashboardActivityView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        per_source_limit = 5
+        result_limit = 5
+
+        events = []
+
+        for q in Question.objects.filter(author=user).order_by("-created_at")[:per_source_limit]:
+            events.append({
+                "id": f"question-{q.id}",
+                "action": f'Posted a question: "{q.title}"',
+                "created_at": q.created_at,
+            })
+
+        for a in (
+            Answer.objects.filter(author=user)
+            .select_related("question")
+            .order_by("-created_at")[:per_source_limit]
+        ):
+            events.append({
+                "id": f"answer-{a.id}",
+                "action": f'Answered: "{a.question.title}"',
+                "created_at": a.created_at,
+            })
+
+        for r in Resource.objects.filter(submitted_by=user).order_by("-created_at")[:per_source_limit]:
+            events.append({
+                "id": f"resource-{r.id}",
+                "action": f'Submitted a resource: "{r.title}"',
+                "created_at": r.created_at,
+            })
+
+        for m in (
+            Membership.objects.filter(user=user)
+            .select_related("group")
+            .order_by("-joined_at")[:per_source_limit]
+        ):
+            events.append({
+                "id": f"membership-{m.id}",
+                "action": f'Joined study group: "{m.group.name}"',
+                "created_at": m.joined_at,
+            })
+
+        for pt in PointTransaction.objects.filter(user=user).order_by("-created_at")[:per_source_limit]:
+            events.append({
+                "id": f"points-{pt.id}",
+                "action": pt.description or pt.get_event_type_display(),
+                "created_at": pt.created_at,
+            })
+
+        events.sort(key=lambda e: e["created_at"], reverse=True)
+        top_events = events[:result_limit]
+
+        activity_data = [
+            {
+                "id": e["id"],
+                "action": e["action"],
+                "timestamp": naturaltime(e["created_at"]),
+            }
+            for e in top_events
+        ]
+
+        return Response(activity_data, status=status.HTTP_200_OK)
