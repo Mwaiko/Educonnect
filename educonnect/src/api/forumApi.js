@@ -1,8 +1,5 @@
-import axios from "axios";
+import client from "./axios";
 
-const API_BASE = "/api/v1";
-
-const client = axios.create({ baseURL: API_BASE });
 
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem("access_token");
@@ -12,13 +9,6 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
-// Axios interceptors run outside React, so they can't call useAuth()
-// directly. Instead, on a 401 we clear the stale token and broadcast a
-// DOM event. Whichever AuthContext/AuthProvider is mounted (the current
-// stub, or the real one from feature-auth-profile once merged) can
-// listen for "auth:unauthorized" and update its state / redirect to
-// login accordingly. This keeps forumApi decoupled from whatever auth
-// implementation is active.
 client.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -34,8 +24,7 @@ client.interceptors.response.use(
  * Forum & Q&A API bindings.
  * Maps directly to the endpoints documented in section 8.3 / 8.4
  * of the EduConnect technical documentation.
- */
-export const forumApi = {
+ */export const forumApi = {
   // GET /api/v1/forum/questions/
   listQuestions: (params = {}) =>
     client.get("/forum/questions/", { params }).then((res) => res.data),

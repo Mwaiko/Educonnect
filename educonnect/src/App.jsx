@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './context/ThemeContext'; // Import the provider
 
 // Auth & Profile Pages
 import LoginPage          from "./pages/LoginPage";
@@ -22,15 +23,15 @@ import GroupForm          from './pages/Groups/GroupForm';
 import ChatRoom            from './pages/Chat/ChatRoom';
 import NotificationCenter  from './components/NotificationCenter';
 
+import AskQuestionForm from './pages/forum/AskQuestionForm';
+
 import "./styles/tokens.css";
 
-/* Simple auth guard — checks for JWT */
 function RequireAuth({ children }) {
   const token = localStorage.getItem("access_token");
   return token ? children : <Navigate to="/login" replace />;
 }
 
-/* Resources page wrapper with its own add-form modal state */
 function DashboardResources() {
   const [showForm, setShowForm] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -46,8 +47,6 @@ function DashboardResources() {
   );
 }
 
-/* Study Groups page wrapper with list/detail/create-form state */
-/* Study Groups page wrapper with list/detail/create-form/chat state */
 function DashboardGroups() {
   const [showForm, setShowForm] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState(null);
@@ -95,43 +94,38 @@ function DashboardGroups() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Public Auth Routes */}
-        <Route path="/login"           element={<LoginPage />} />
-        <Route path="/register"        element={<RegisterPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+    <ThemeProvider> {/* Wrapped here to unlock context globally */}
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login"           element={<LoginPage />} />
+          <Route path="/register"        element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-        {/* Root Redirect straight to Dashboard */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<MainDashboard />} />
+          <Route path="/forum/ask" element={<AskQuestionForm />} />
+          <Route path="/resources" element={
+            <RequireAuth>
+              <DashboardResources />
+            </RequireAuth>
+          } />
 
-        <Route path="/dashboard" element={<MainDashboard />} />
+          <Route path="/groups" element={
+            <RequireAuth>
+              <DashboardGroups />
+            </RequireAuth>
+          } />
 
-        {/* Protected Resources Sub-Route */}
-        <Route path="/resources" element={
-          <RequireAuth>
-            <DashboardResources />
-          </RequireAuth>
-        } />
+          <Route path="/profile" element={
+            <RequireAuth><UserProfilePage /></RequireAuth>
+          } />
+          <Route path="/profile/edit" element={
+            <RequireAuth><EditProfilePage /></RequireAuth>
+          } />
 
-        {/* Protected Study Groups Sub-Route */}
-        <Route path="/groups" element={
-          <RequireAuth>
-            <DashboardGroups />
-          </RequireAuth>
-        } />
-
-        {/* Protected Profile Routes */}
-        <Route path="/profile" element={
-          <RequireAuth><UserProfilePage /></RequireAuth>
-        } />
-        <Route path="/profile/edit" element={
-          <RequireAuth><EditProfilePage /></RequireAuth>
-        } />
-
-        {/* Default Catch-All Fallback */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </BrowserRouter>
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }

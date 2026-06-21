@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
+import { useTheme } from "../context/ThemeContext"; // 1. Use the new global context hook
 import QuestionFeed       from "./forum/QuestionFeed";
 import AskQuestionForm    from "./forum/AskQuestionForm";
 import QuestionDetailPage from "./forum/QuestionDetailPage";
@@ -9,54 +10,9 @@ import ResourceList       from "./Resources/ResourceList";
 import ResourceForm       from "./Resources/ResourceForm";
 import ProfilePage        from "./profile/ProfilePage";
 import GroupList          from "./Groups/GroupList";
-// ═════════════════════════════════════════════════════════════════════════════
-//  THEME SYSTEM — Light & Dark Mode
-// ═════════════════════════════════════════════════════════════════════════════
 
-const THEMES = {
-  light: {
-    primary: "#4F46E5", primaryLight: "#EEF2FF", primaryMid: "#818CF8", primaryDark: "#312E81",
-    accent: "#06B6D4", accentLight: "#ECFEFF",
-    success: "#10B981", successLight: "#ECFDF5",
-    warning: "#F59E0B", warningLight: "#FFFBEB",
-    danger: "#EF4444", dangerLight: "#FEF2F2",
-    surface: "#F8FAFC", surfaceElevated: "#FFFFFF",
-    border: "rgba(79,70,229,0.15)",
-    text: "#1E1B4B", textSecondary: "#6B7280", white: "#FFFFFF",
-    bg: "#F0F2FA",
-    sidebarBg: "linear-gradient(180deg, #312E81 0%, #1e1b4b 100%)",
-    cardShadow: "0 1px 3px rgba(0,0,0,0.04)",
-    hoverShadow: "0 12px 24px rgba(79,70,229,0.15), 0 4px 8px rgba(0,0,0,0.04)",
-    modalOverlay: "rgba(0,0,0,0.5)",
-    inputBg: "#FFFFFF",
-    scrollbarThumb: "rgba(79,70,229,0.2)",
-    scrollbarThumbHover: "rgba(79,70,229,0.3)",
-    gradientHero: "linear-gradient(135deg, #312E81 0%, #1e1b4b 100%)",
-  },
-  dark: {
-    primary: "#818CF8", primaryLight: "rgba(129,140,248,0.15)", primaryMid: "#A5B4FC", primaryDark: "#C7D2FE",
-    accent: "#22D3EE", accentLight: "rgba(34,211,238,0.15)",
-    success: "#34D399", successLight: "rgba(52,211,153,0.15)",
-    warning: "#FBBF24", warningLight: "rgba(251,191,36,0.15)",
-    danger: "#F87171", dangerLight: "rgba(248,113,113,0.15)",
-    surface: "#1E1B4B", surfaceElevated: "#2D2A5E",
-    border: "rgba(129,140,248,0.2)",
-    text: "#F1F5F9", textSecondary: "#94A3B8", white: "#0F172A",
-    bg: "#0B0F2A",
-    sidebarBg: "linear-gradient(180deg, #0F0A3C 0%, #1a1647 100%)",
-    cardShadow: "0 1px 3px rgba(0,0,0,0.3)",
-    hoverShadow: "0 12px 24px rgba(129,140,248,0.15), 0 4px 8px rgba(0,0,0,0.2)",
-    modalOverlay: "rgba(0,0,0,0.7)",
-    inputBg: "#1E1B4B",
-    scrollbarThumb: "rgba(129,140,248,0.3)",
-    scrollbarThumbHover: "rgba(129,140,248,0.5)",
-    gradientHero: "linear-gradient(135deg, #1a1647 0%, #0F0A3C 100%)",
-  }
-};
+// Removed the old local THEMES configuration
 
-// ═════════════════════════════════════════════════════════════════════════════
-//  API — real backend calls via axios instance
-// ═════════════════════════════════════════════════════════════════════════════
 const dashboardApi = {
   getUser:          () => api.get("/auth/me/").then(r => r.data),
   getStats:         () => api.get("/dashboard/stats/").then(r => r.data),
@@ -70,53 +26,19 @@ const dashboardApi = {
   markAllNotificationsRead: () => api.post("/notifications/mark-all-read/"),
 };
 
-// ═════════════════════════════════════════════════════════════════════════════
-//  MOCK DATA — used for guest/logged-out preview panels (GuestPromoPanel)
-// ═════════════════════════════════════════════════════════════════════════════
-const MOCK_DB = {
-  questions: [
-    {
-      title: "How do I approach dynamic programming problems?",
-      body: "I keep getting stuck identifying the subproblems. Any frameworks or tips that helped you?",
-      tags: ["Algorithms"],
-      status: "resolved",
-      author: "JK",
-      authorColor: "primary",
-      time: "2h ago",
-      answers: 6,
-      upvotes: 14,
-    },
-    {
-      title: "Difference between BFS and DFS in weighted graphs?",
-      body: "Trying to understand when one is more appropriate than the other for shortest-path problems.",
-      tags: ["Graphs"],
-      status: "open",
-      author: "AM",
-      authorColor: "accent",
-      time: "4h ago",
-      answers: 3,
-      upvotes: 9,
-    },
-    {
-      title: "Best way to normalize a database schema for a course project?",
-      body: "Working on a student records system and want to avoid redundancy without over-engineering it.",
-      tags: ["Databases", "SQL"],
-      status: "open",
-      author: "TN",
-      authorColor: "success",
-      time: "6h ago",
-      answers: 2,
-      upvotes: 5,
-    },
-  ],
-  leaderboard: [
-    { rank: 1, initials: "WK", name: "Wanjiru K.", color: "warning", streak: 21, points: 2480 },
-    { rank: 2, initials: "OD", name: "Otieno D.", color: "primary", streak: 14, points: 2210 },
-    { rank: 3, initials: "FM", name: "Faith M.", color: "accent", streak: 9, points: 1990 },
-    { rank: 4, initials: "KN", name: "Kevin N.", color: "success", streak: 6, points: 1640 },
-    { rank: 5, initials: "AL", name: "Amina L.", color: "danger", streak: 4, points: 1420 },
-  ],
-};
+function getDisplayName(user, fallback = "there") {
+  if (!user) return fallback;
+  const name = [user.first_name, user.last_name].filter(Boolean).join(" ").trim();
+  return name || user.username || fallback;
+}
+function getInitials(user) {
+  if (!user) return "?";
+  if (user.initials) return user.initials;
+  const f = user.first_name?.[0] ?? user.username?.[0] ?? "";
+  const l = user.last_name?.[0] ?? "";
+  const initials = (f + l).toUpperCase();
+  return initials || "?";
+}
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  SHARED HOOKS
@@ -168,17 +90,13 @@ function useMediaQuery(query) {
   return matches;
 }
 
-function useTheme() {
-  const [themeMode, setThemeMode] = useLocalStorage('educonnect-theme', 'light');
-  const C = THEMES[themeMode];
-  const toggleTheme = () => setThemeMode(prev => prev === 'light' ? 'dark' : 'light');
-  return { C, themeMode, toggleTheme };
-}
+// Removed duplicate useTheme hook
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  SHARED SUB-COMPONENTS
 // ═════════════════════════════════════════════════════════════════════════════
-function Avatar({ initials, color, size = 36, overlap = false, ring = false, C }) {
+function Avatar({ initials, color, size = 36, overlap = false, ring = false }) {
+  const { C } = useTheme(); // Consuming context directly
   const resolvedColor = C[color] || color || C.primary;
   return (
     <div style={{
@@ -194,7 +112,8 @@ function Avatar({ initials, color, size = 36, overlap = false, ring = false, C }
   );
 }
 
-function Badge({ label, bg, color, icon, C }) {
+function Badge({ label, bg, color, icon }) {
+  const { C } = useTheme();
   return (
     <span style={{
       display: "inline-flex", alignItems: "center", gap: 4,
@@ -209,7 +128,9 @@ function Badge({ label, bg, color, icon, C }) {
   );
 }
 
-function LoadingSpinner({ C }) {
+// Sub-components reading theme via useTheme hook directly
+function LoadingSpinner() {
+  const { C } = useTheme();
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 40 }}>
       <div style={{
@@ -222,7 +143,8 @@ function LoadingSpinner({ C }) {
   );
 }
 
-function SkeletonCard({ C, height = 80 }) {
+function SkeletonCard({ height = 80 }) {
+  const { C } = useTheme();
   const [opacity, setOpacity] = useState(0.5);
   useEffect(() => {
     const interval = setInterval(() => setOpacity(prev => prev === 0.5 ? 0.8 : 0.5), 800);
@@ -251,9 +173,10 @@ const NAV_ITEMS = [
   { key: "profile",      icon: "👤", label: "My Profile" },
 ];
 
-function Sidebar({ active, onNav, collapsed, onToggleCollapse, isLoggedIn, onLogout, C, themeMode, onToggleTheme, isMobile, mobileOpen, onCloseMobile }) {
+function Sidebar({ active, onNav, collapsed, onToggleCollapse, isLoggedIn, user, onLogout, isMobile, mobileOpen, onCloseMobile }) {
   const [hoveredItem, setHoveredItem] = useState(null);
   const navigate = useNavigate();
+  const { C, themeMode, toggleTheme } = useTheme(); // Consumed context globally instead of via props
 
   const sidebarContent = (
     <>
@@ -303,7 +226,7 @@ function Sidebar({ active, onNav, collapsed, onToggleCollapse, isLoggedIn, onLog
       {!collapsed && (
         <div style={{ padding: "12px 20px 0" }}>
           <button
-            onClick={onToggleTheme}
+            onClick={toggleTheme}
             style={{
               display: "flex", alignItems: "center", gap: 8, width: "100%",
               padding: "8px 12px", borderRadius: 8,
@@ -360,10 +283,10 @@ function Sidebar({ active, onNav, collapsed, onToggleCollapse, isLoggedIn, onLog
         <div style={{ padding: "16px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
           {isLoggedIn ? (
             <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 12, padding: "14px", display: "flex", alignItems: "center", gap: 10 }}>
-              <Avatar initials="IK" color={C.accent} size={36} ring C={C} />
+              <Avatar initials={getInitials(user)} color={C.accent} size={36} ring />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>Ian Kimathi</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>Student</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>{getDisplayName(user, "Account")}</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{user?.role || "Member"}</div>
               </div>
               <button
                 onClick={onLogout}
@@ -444,7 +367,8 @@ function Sidebar({ active, onNav, collapsed, onToggleCollapse, isLoggedIn, onLog
   );
 }
 
-function StatCard({ stat, C }) {
+function StatCard({ stat }) {
+  const { C } = useTheme();
   const [hovered, setHovered] = useState(false);
   const colorValue = C[stat.color] || stat.color;
   const animatedValue = useAnimatedCounter(stat.value);
@@ -481,7 +405,8 @@ function StatCard({ stat, C }) {
   );
 }
 
-function QuestionCard({ q, blurred = false, C }) {
+function QuestionCard({ q, blurred = false }) {
+  const { C } = useTheme();
   const [hovered, setHovered] = useState(false);
   const [upvoted, setUpvoted] = useState(false);
   const tagColors = {
@@ -514,15 +439,15 @@ function QuestionCard({ q, blurred = false, C }) {
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6, lineHeight: 1.4, display: "flex", alignItems: "center", gap: 8 }}>
             {q.title}
-            {q.status === "resolved" && <Badge label="Resolved" bg={C.successLight} color={C.success} icon="✓" C={C} />}
+            {q.status === "resolved" && <Badge label="Resolved" bg={C.successLight} color={C.success} icon="✓" />}
           </div>
           <div style={{ fontSize: 12, color: C.textSecondary, lineHeight: 1.6, marginBottom: 8 }}>{q.body}</div>
           <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
             {q.tags.map(tag => (
-              <Badge key={tag} label={tag} bg={tagColors[tag]?.[0]} color={tagColors[tag]?.[1]} C={C} />
+              <Badge key={tag} label={tag} bg={tagColors[tag]?.[0]} color={tagColors[tag]?.[1]} />
             ))}
             <span style={{ fontSize: 11, color: C.textSecondary, marginLeft: "auto", display: "flex", alignItems: "center", gap: 4 }}>
-              <Avatar initials={q.author} color={authorColor} size={20} C={C} />
+              <Avatar initials={q.author} color={authorColor} size={20} />
               <span>{q.time}</span>
               <span style={{ color: C.border }}>•</span>
               <span>{q.answers} answers</span>
@@ -548,7 +473,8 @@ function QuestionCard({ q, blurred = false, C }) {
   );
 }
 
-function NotifItem({ n, onRead, C }) {
+function NotifItem({ n, onRead }) {
+  const { C } = useTheme();
   const [hovered, setHovered] = useState(false);
   const colorValue = C[n.color] || n.color;
   return (
@@ -581,7 +507,8 @@ function NotifItem({ n, onRead, C }) {
   );
 }
 
-function StudyGroupCard({ group, C }) {
+function StudyGroupCard({ group }) {
+  const { C } = useTheme();
   const [hovered, setHovered] = useState(false);
   const [joined, setJoined] = useState(false);
   const colorValue = C[group.color] || group.color;
@@ -609,7 +536,7 @@ function StudyGroupCard({ group, C }) {
             <span style={{ fontSize: 10 }}>📅</span>{group.meeting}
           </div>
         </div>
-        <Badge label={group.provider} bg={`${colorValue}15`} color={colorValue} C={C} />
+        <Badge label={group.provider} bg={`${colorValue}15`} color={colorValue} />
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <div style={{ flex: 1 }}>
@@ -625,10 +552,10 @@ function StudyGroupCard({ group, C }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", marginLeft: 4 }}>
           {group.avatars.map((av, i) => (
-            <Avatar key={i} initials={av} color={i === 0 ? colorValue : i === 1 ? C.accent : C.success} size={28} overlap C={C} />
+            <Avatar key={i} initials={av} color={i === 0 ? colorValue : i === 1 ? C.accent : C.success} size={28} overlap />
           ))}
           {group.members > group.avatars.length && (
-            <Avatar initials={`+${group.members - group.avatars.length}`} color="#E2E8F0" size={28} overlap C={C} />
+            <Avatar initials={`+${group.members - group.avatars.length}`} color="#E2E8F0" size={28} overlap />
           )}
         </div>
         <button
@@ -647,7 +574,8 @@ function StudyGroupCard({ group, C }) {
   );
 }
 
-function LeaderboardRow({ p, C }) {
+function LeaderboardRow({ p }) {
+  const { C } = useTheme();
   const [hovered, setHovered] = useState(false);
   const isTop3 = p.rank <= 3;
   const rankIcons = { 1: "🥇", 2: "🥈", 3: "🥉" };
@@ -666,11 +594,11 @@ function LeaderboardRow({ p, C }) {
       <span style={{ fontSize: 14, fontWeight: 700, color: isTop3 ? colorValue : C.textSecondary, minWidth: 28, textAlign: "center" }}>
         {isTop3 ? rankIcons[p.rank] : `#${p.rank}`}
       </span>
-      <Avatar initials={p.initials} color={colorValue} size={32} ring={p.isMe} C={C} />
+      <Avatar initials={p.initials} color={colorValue} size={32} ring={p.isMe} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: p.isMe ? 600 : 500, color: C.text, display: "flex", alignItems: "center", gap: 6 }}>
           {p.name}
-          {p.isMe && <Badge label="You" bg={C.accentLight} color={C.accent} C={C} />}
+          {p.isMe && <Badge label="You" bg={C.accentLight} color={C.accent} />}
         </div>
         <div style={{ fontSize: 11, color: C.textSecondary, display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
           <span style={{ fontSize: 10 }}>🔥</span>{p.streak}-day streak
@@ -683,7 +611,8 @@ function LeaderboardRow({ p, C }) {
   );
 }
 
-function ResourceCard({ r, C }) {
+function ResourceCard({ r }) {
+  const { C } = useTheme();
   const [hovered, setHovered] = useState(false);
   const [voted, setVoted] = useState(false);
   const colorValue = C[r.color] || r.color;
@@ -707,7 +636,7 @@ function ResourceCard({ r, C }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 2 }}>{r.title}</div>
         <div style={{ fontSize: 11, color: C.textSecondary, display: "flex", alignItems: "center", gap: 6 }}>
-          <Badge label={r.subject} bg={`${colorValue}15`} color={colorValue} C={C} />
+          <Badge label={r.subject} bg={`${colorValue}15`} color={colorValue} />
           <span>by {r.submitter}</span>
         </div>
       </div>
@@ -727,7 +656,8 @@ function ResourceCard({ r, C }) {
   );
 }
 
-function ActivityItem({ activity, C }) {
+function ActivityItem({ activity }) {
+  const { C } = useTheme();
   const [hovered, setHovered] = useState(false);
   const colorValue = C[activity.color] || activity.color;
   return (
@@ -740,7 +670,7 @@ function ActivityItem({ activity, C }) {
         opacity: hovered ? 1 : 0.85, transition: "opacity 0.2s ease", cursor: "pointer",
       }}
     >
-      <Avatar initials={activity.avatar} color={colorValue} size={30} C={C} />
+      <Avatar initials={activity.avatar} color={colorValue} size={30} />
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 12, color: C.text, lineHeight: 1.5 }}>
           <strong>{activity.user}</strong>{" "}
@@ -756,17 +686,38 @@ function ActivityItem({ activity, C }) {
 // ═════════════════════════════════════════════════════════════════════════════
 //  GUEST LANDING
 // ═════════════════════════════════════════════════════════════════════════════
-function GuestPromoPanel({ C }) {
+function GuestPromoPanel() {
+  const { C } = useTheme();
   const navigate = useNavigate();
   const onLogin    = () => navigate("/login");
   const onRegister = () => navigate("/register");
 
-  const stats = [
-    { value: "12,400+", label: "Students", icon: "🎓" },
-    { value: "38,000+", label: "Questions answered", icon: "💬" },
-    { value: "4,200+", label: "Study groups", icon: "👥" },
-    { value: "9,100+", label: "Resources shared", icon: "📚" },
-  ];
+  const [previewQuestions, setPreviewQuestions] = useState([]);
+  const [previewLeaderboard, setPreviewLeaderboard] = useState([]);
+  const [previewLoading, setPreviewLoading] = useState(true);
+  const [previewErrors, setPreviewErrors] = useState({});
+
+  useEffect(() => {
+    let mounted = true;
+    Promise.allSettled([dashboardApi.getQuestions(), dashboardApi.getLeaderboard()])
+      .then(([qResult, lbResult]) => {
+        if (!mounted) return;
+        if (qResult.status === "fulfilled") {
+          setPreviewQuestions(qResult.value ?? []);
+        } else {
+          const status = qResult.reason?.response?.status;
+          setPreviewErrors(prev => ({ ...prev, questions: status === 404 ? "unavailable" : "error" }));
+        }
+        if (lbResult.status === "fulfilled") {
+          setPreviewLeaderboard(lbResult.value ?? []);
+        } else {
+          const status = lbResult.reason?.response?.status;
+          setPreviewErrors(prev => ({ ...prev, leaderboard: status === 404 ? "unavailable" : "error" }));
+        }
+        setPreviewLoading(false);
+      });
+    return () => { mounted = false; };
+  }, []);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -816,26 +767,11 @@ function GuestPromoPanel({ C }) {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 14 }}>
-        {stats.map((s) => (
-          <div key={s.label} style={{
-            background: C.surfaceElevated, border: `1px solid ${C.border}`,
-            borderRadius: 14, padding: "20px",
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
-            boxShadow: C.cardShadow,
-          }}>
-            <span style={{ fontSize: 26 }}>{s.icon}</span>
-            <div style={{ fontSize: 22, fontWeight: 800, color: C.text }}>{s.value}</div>
-            <div style={{ fontSize: 12, color: C.textSecondary, textAlign: "center" }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
         {[
-          { icon: "🔥", title: "Daily Streaks", desc: "Stay consistent. Earn streak badges for logging in and contributing every day.", color: "warning", bg: "warningLight" },
-          { icon: "🏆", title: "Leaderboards", desc: "Compete weekly, earn points by answering questions and sharing resources.", color: "primary", bg: "primaryLight" },
-          { icon: "👥", title: "Study Groups", desc: "Auto-matched groups based on your subjects. Schedule meets on Zoom or Google Meet.", color: "accent", bg: "accentLight" },
+          { icon: "🔥", title: "Daily Streaks", desc: "Stay consistent. Earn streak badges for logging in and contributing every day.", bg: "warningLight" },
+          { icon: "🏆", title: "Leaderboards", desc: "Compete weekly, earn points by answering questions and sharing resources.", bg: "primaryLight" },
+          { icon: "👥", title: "Study Groups", desc: "Auto-matched groups based on your subjects. Schedule meets on Zoom or Google Meet.", bg: "accentLight" },
         ].map((f) => (
           <div key={f.title} style={{
             background: C.surfaceElevated, border: `1px solid ${C.border}`,
@@ -857,25 +793,36 @@ function GuestPromoPanel({ C }) {
               <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 2 }}>Recent Questions</div>
               <div style={{ fontSize: 12, color: C.textSecondary }}>Browse what the community is discussing</div>
             </div>
-            <QuestionCard q={MOCK_DB.questions[0]} C={C} />
-            <div style={{ position: "relative", marginTop: 12 }}>
-              <QuestionCard q={MOCK_DB.questions[1]} blurred C={C} />
-              <QuestionCard q={MOCK_DB.questions[2]} blurred C={C} />
-              <div style={{
-                position: "absolute", inset: 0, display: "flex", flexDirection: "column",
-                alignItems: "center", justifyContent: "center", gap: 14,
-                background: C.themeMode === 'dark' ? "rgba(15,23,42,0.8)" : "rgba(248,250,252,0.7)",
-                borderRadius: 12, backdropFilter: "blur(2px)",
-              }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: C.text, textAlign: "center" }}>
-                  Sign in to see all questions and join the discussion
-                </div>
-                <div style={{ display: "flex", gap: 10 }}>
-                  <button onClick={onLogin} style={{ padding: "8px 20px", borderRadius: 10, background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>Sign in</button>
-                  <button onClick={onRegister} style={{ padding: "8px 20px", borderRadius: 10, background: C.surfaceElevated, color: C.primary, fontSize: 13, fontWeight: 600, border: `1px solid ${C.border}`, cursor: "pointer" }}>Register free</button>
-                </div>
-              </div>
-            </div>
+            {previewLoading ? (
+              <SkeletonCard height={90} />
+            ) : previewQuestions.length === 0 ? (
+              <SectionEmptyState status={previewErrors.questions} icon="💬" emptyTitle="No questions yet" emptyHint="Be the first to start a discussion." />
+            ) : (
+              <>
+                <QuestionCard q={previewQuestions[0]} />
+                {previewQuestions.length > 1 && (
+                  <div style={{ position: "relative", marginTop: 12 }}>
+                    {previewQuestions.slice(1, 3).map((q, i) => (
+                      <QuestionCard key={q.id ?? i} q={q} blurred />
+                    ))}
+                    <div style={{
+                      position: "absolute", inset: 0, display: "flex", flexDirection: "column",
+                      alignItems: "center", justifyContent: "center", gap: 14,
+                      background: C.themeMode === 'dark' ? "rgba(15,23,42,0.8)" : "rgba(248,250,252,0.7)",
+                      borderRadius: 12, backdropFilter: "blur(2px)",
+                    }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: C.text, textAlign: "center" }}>
+                        Sign in to see all questions and join the discussion
+                      </div>
+                      <div style={{ display: "flex", gap: 10 }}>
+                        <button onClick={onLogin} style={{ padding: "8px 20px", borderRadius: 10, background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>Sign in</button>
+                        <button onClick={onRegister} style={{ padding: "8px 20px", borderRadius: 10, background: C.surfaceElevated, color: C.primary, fontSize: 13, fontWeight: 600, border: `1px solid ${C.border}`, cursor: "pointer" }}>Register free</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 
@@ -886,44 +833,46 @@ function GuestPromoPanel({ C }) {
                 <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 2 }}>🏆 Leaderboard</div>
                 <div style={{ fontSize: 12, color: C.textSecondary }}>Top performers this week</div>
               </div>
-              <Badge label="Weekly" bg={C.warningLight} color={C.warning} C={C} />
+              <Badge label="Weekly" bg={C.warningLight} color={C.warning} />
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {MOCK_DB.leaderboard.slice(0, 3).map(p => <LeaderboardRow key={p.rank} p={{ ...p, isMe: false }} C={C} />)}
-            </div>
-            <div style={{ position: "relative", marginTop: 4 }}>
-              {MOCK_DB.leaderboard.slice(3).map(p => (
-                <div key={p.rank} style={{ filter: "blur(4px)", pointerEvents: "none" }}>
-                  <LeaderboardRow p={{ ...p, isMe: false }} C={C} />
+            {previewLoading ? (
+              <SkeletonCard height={140} />
+            ) : previewLeaderboard.length === 0 ? (
+              <SectionEmptyState status={previewErrors.leaderboard} icon="🏆" emptyTitle="No rankings yet" emptyHint="Rankings update weekly as the community gets active." />
+            ) : (
+              <>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {previewLeaderboard.slice(0, 3).map((p, i) => <LeaderboardRow key={p.rank ?? i} p={{ ...p, isMe: false }} />)}
                 </div>
-              ))}
-              <div style={{
-                position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-                background: C.themeMode === 'dark' ? "rgba(15,23,42,0.6)" : "rgba(248,250,252,0.6)",
-                backdropFilter: "blur(1px)", borderRadius: 8,
-              }}>
-                <button onClick={onLogin} style={{ fontSize: 12, color: C.primary, fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>
-                  🔒 Sign in to see your rank
-                </button>
-              </div>
-            </div>
+                {previewLeaderboard.length > 3 && (
+                  <div style={{ position: "relative", marginTop: 4 }}>
+                    {previewLeaderboard.slice(3).map((p, i) => (
+                      <div key={p.rank ?? i} style={{ filter: "blur(4px)", pointerEvents: "none" }}>
+                        <LeaderboardRow p={{ ...p, isMe: false }} />
+                      </div>
+                    ))}
+                    <div style={{
+                      position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                      background: C.themeMode === 'dark' ? "rgba(15,23,42,0.6)" : "rgba(248,250,252,0.6)",
+                      backdropFilter: "blur(1px)", borderRadius: 8,
+                    }}>
+                      <button onClick={onLogin} style={{ fontSize: 12, color: C.primary, fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>
+                        🔒 Sign in to see your rank
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
-
-
         </div>
       </div>
     </div>
   );
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-//  Helpers for eloquent degraded states (missing/404'd endpoints, empty data)
-// ═════════════════════════════════════════════════════════════════════════════
-
-// Renders inline wherever a section has nothing to show — either because the
-// backend genuinely has no data yet, or because that section's endpoint
-// 404'd / errored. Message adapts to which case it is.
-function SectionEmptyState({ C, status, emptyTitle, emptyHint, icon = "📭" }) {
+function SectionEmptyState({ status, emptyTitle, emptyHint, icon = "📭" }) {
+  const { C } = useTheme();
   const copy = status === "unavailable"
     ? { icon: "🛠️", title: "Coming soon", hint: "This part of the dashboard isn't connected yet." }
     : status === "error"
@@ -942,9 +891,8 @@ function SectionEmptyState({ C, status, emptyTitle, emptyHint, icon = "📭" }) 
   );
 }
 
-// Small dismissible banner summarizing which sections couldn't load, with a
-// one-click retry — shown above the dashboard during a partial outage.
-function PartialOutageBanner({ C, missingLabels, onRetry, onDismiss }) {
+function PartialOutageBanner({ missingLabels, onRetry, onDismiss }) {
+  const { C } = useTheme();
   if (missingLabels.length === 0) return null;
   return (
     <div style={{
@@ -972,18 +920,16 @@ function PartialOutageBanner({ C, missingLabels, onRetry, onDismiss }) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  AUTHENTICATED DASHBOARD (with simulated data fetching)
+//  AUTHENTICATED DASHBOARD
 // ═════════════════════════════════════════════════════════════════════════════
-function DashboardView({ C }) {
+function DashboardView({ onViewProfile, onViewQuestions, onViewLeaderboard, onViewGroups }) {
+  const { C } = useTheme();
   const navigate = useNavigate();
   const [notifOpen, setNotifOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [greeting, setGreeting] = useState("Good morning");
 
-  // Data states — arrays/objects default to empty rather than null so a
-  // failed or not-yet-implemented endpoint degrades to "nothing here yet"
-  // instead of crashing a .map()/.filter() call downstream.
   const [user, setUser] = useState(null);
   const [stats, setStats] = useState([]);
   const [questions, setQuestions] = useState([]);
@@ -993,8 +939,6 @@ function DashboardView({ C }) {
   const [resources, setResources] = useState([]);
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
-  // Per-section fetch status: "unavailable" (404 — endpoint not wired up yet),
-  // "error" (network/5xx/etc), or absent (loaded fine).
   const [errors, setErrors] = useState({});
   const [refreshKey, setRefreshKey] = useState(0);
   const [bannerDismissed, setBannerDismissed] = useState(false);
@@ -1006,9 +950,6 @@ function DashboardView({ C }) {
     else setGreeting("Good evening");
   }, []);
 
-  // Fetch all dashboard data from real backend. Each section is fetched
-  // independently — one missing/broken endpoint never blocks the rest of
-  // the dashboard from rendering.
   useEffect(() => {
     let mounted = true;
     setLoading(true);
@@ -1040,14 +981,9 @@ function DashboardView({ C }) {
         const [key] = calls[i];
         const status = result.reason?.response?.status;
         if (status === 404) {
-          // Endpoint isn't implemented on the backend yet — this is an
-          // expected, recoverable state during development, not a bug to
-          // surface as a scary stack trace. Log once, quietly.
           nextErrors[key] = "unavailable";
-          console.warn(`Dashboard: "${key}" endpoint not found (404) — showing fallback UI for that section.`);
         } else {
           nextErrors[key] = "error";
-          console.error(`Dashboard: failed to load "${key}"`, result.reason);
         }
       });
       setErrors(nextErrors);
@@ -1064,26 +1000,22 @@ function DashboardView({ C }) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
-          {[1,2,3,4].map(i => <SkeletonCard key={i} C={C} height={120} />)}
+          {[1,2,3,4].map(i => <SkeletonCard key={i} height={120} />)}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 20 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <SkeletonCard C={C} height={200} />
-            <SkeletonCard C={C} height={200} />
+            <SkeletonCard height={200} />
+            <SkeletonCard height={200} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <SkeletonCard C={C} height={250} />
-            <SkeletonCard C={C} height={200} />
+            <SkeletonCard height={250} />
+            <SkeletonCard height={200} />
           </div>
         </div>
       </div>
     );
   }
 
-  // Full outage: every single section failed (e.g. wrong API base URL, backend
-  // down, or none of the routes exist yet). In that case there's nothing
-  // meaningful to render, so show one clear, actionable screen instead of a
-  // dashboard full of empty boxes.
   const sectionKeys = ["user", "stats", "questions", "studyGroups", "notifications", "leaderboard", "resources", "activity"];
   const failedCount = sectionKeys.filter(k => errors[k]).length;
   const allFailed = failedCount === sectionKeys.length;
@@ -1118,12 +1050,13 @@ function DashboardView({ C }) {
     );
   }
 
-  // Partial outage: render the dashboard with whatever data did load, and
-  // show a small dismissible banner calling out what's temporarily missing.
   const safeUser = user ?? {
-    name: "there", initials: "?", streak: 0, role: "Member",
+    streak: 0, role: "Member",
     points: 0, questionsAsked: 0, answersGiven: 0, resourcesShared: 0, rank: "—",
   };
+  const joinedDate = user?.date_joined
+    ? new Date(user.date_joined).toLocaleDateString(undefined, { month: "short", year: "numeric" })
+    : null;
 
   const unreadCount = notifications.filter(n => !n.read).length;
   const markAsRead = (id) => {
@@ -1145,22 +1078,22 @@ function DashboardView({ C }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <PartialOutageBanner
-        C={C}
         missingLabels={missingLabels}
         onRetry={retry}
         onDismiss={() => setBannerDismissed(true)}
       />
-      {/* Welcome Header */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         background: `linear-gradient(135deg, ${C.surfaceElevated} 0%, ${C.primaryLight} 100%)`,
         border: `1px solid ${C.border}`, borderRadius: 16, padding: "20px 24px",
-        position: "relative", overflow: "hidden", flexWrap: "wrap", gap: 12,
+        position: "relative", flexWrap: "wrap", gap: 12,
       }}>
-        <div style={{ position: "absolute", top: -30, right: -30, width: 180, height: 180, borderRadius: "50%", background: `radial-gradient(circle, ${C.primary}12, transparent 70%)`, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", inset: 0, borderRadius: 16, overflow: "hidden", pointerEvents: "none" }}>
+          <div style={{ position: "absolute", top: -30, right: -30, width: 180, height: 180, borderRadius: "50%", background: `radial-gradient(circle, ${C.primary}12, transparent 70%)` }} />
+        </div>
         <div style={{ position: "relative", zIndex: 1 }}>
           <div style={{ fontSize: 22, fontWeight: 700, color: C.text, marginBottom: 4 }}>
-            {greeting}, {safeUser?.first_name + "    " + safeUser?.last_name}
+            {greeting}, {getDisplayName(safeUser)}
           </div>
           <div style={{ fontSize: 13, color: C.textSecondary }}>Here's what's happening in your learning community today.</div>
         </div>
@@ -1202,43 +1135,44 @@ function DashboardView({ C }) {
               </div>
             )}
             {notifOpen && (
-              <div style={{ position: "absolute", top: 50, right: 0, width: 320, background: C.surfaceElevated, border: `1px solid ${C.border}`, borderRadius: 14, boxShadow: "0 20px 40px rgba(0,0,0,0.12)", zIndex: 100, padding: "16px", animation: "slideDown 0.2s ease" }}>
+              <div style={{
+                position: "absolute", top: "calc(100% + 8px)", right: 0, width: 320, maxWidth: "calc(100vw - 32px)",
+                background: C.surfaceElevated, border: `1px solid ${C.border}`, borderRadius: 14,
+                boxShadow: "0 20px 40px rgba(0,0,0,0.15)", zIndex: 99999, padding: "16px", animation: "slideDown 0.2s ease"
+              }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, paddingBottom: 12, borderBottom: `1px solid ${C.border}` }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>Notifications</div>
                   <button onClick={markAllRead} style={{ fontSize: 11, color: C.primary, background: "none", border: "none", cursor: "pointer", fontWeight: 500 }}>Mark all read</button>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 300, overflowY: "auto" }}>
                   {notifications.length > 0
-                    ? notifications.map(n => <NotifItem key={n.id} n={n} onRead={markAsRead} C={C} />)
-                    : <SectionEmptyState C={C} status={errors.notifications} icon="🔔" emptyTitle="No notifications" emptyHint="You're all caught up." />}
+                    ? notifications.map(n => <NotifItem key={n.id} n={n} onRead={markAsRead} />)
+                    : <SectionEmptyState status={errors.notifications} icon="🔔" emptyTitle="No notifications" emptyHint="You're all caught up." />}
                 </div>
               </div>
             )}
           </div>
 
-          <Avatar initials={safeUser.initials} color={C.accent} size={40} ring C={C} />
+          <Avatar initials={getInitials(safeUser)} color={C.accent} size={40} ring />
         </div>
       </div>
 
-      {/* Stats Grid */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
         {stats.length > 0
-          ? stats.map((s, i) => <StatCard key={i} stat={s} C={C} />)
-          : <SectionEmptyState C={C} status={errors.stats} icon="📈" emptyTitle="No stats yet" emptyHint="Stats will appear once there's activity to measure." />}
+          ? stats.map((s, i) => <StatCard key={i} stat={s} />)
+          : <SectionEmptyState status={errors.stats} icon="📈" emptyTitle="No stats yet" emptyHint="Stats will appear once there's activity to measure." />}
       </div>
 
-      {/* Personal stats bar */}
       <div style={{
         background: `linear-gradient(135deg, ${C.surfaceElevated}, ${C.primaryLight})`,
         border: `1px solid ${C.border}`, borderRadius: 14, padding: "16px 22px",
-        display: "flex", alignItems: "center", gap: 0,
-        boxShadow: C.cardShadow, flexWrap: "wrap",
+        display: "flex", alignItems: "center", gap: 0, boxShadow: C.cardShadow, flexWrap: "wrap",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 200 }}>
-          <Avatar initials={safeUser.initials} color={C.accent} size={42} ring C={C} />
+          <Avatar initials={getInitials(safeUser)} color={C.accent} size={42} ring />
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{safeUser.name}</div>
-            <div style={{ fontSize: 12, color: C.textSecondary }}>{safeUser.role} · Joined Jan 2025</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{getDisplayName(safeUser)}</div>
+            <div style={{ fontSize: 12, color: C.textSecondary }}>{safeUser.role}{joinedDate ? ` · Joined ${joinedDate}` : ""}</div>
           </div>
         </div>
         {[
@@ -1246,7 +1180,7 @@ function DashboardView({ C }) {
           { label: "Questions", value: safeUser.questionsAsked, color: C.accent },
           { label: "Answers", value: safeUser.answersGiven, color: C.success },
           { label: "Resources", value: safeUser.resourcesShared, color: C.warning },
-          { label: "Rank", value: `#${safeUser.rank}`, color: C.danger },
+          { label: "Rank", value: `#${safeUser.rank_position}`, color: C.danger },
         ].map((s) => (
           <div key={s.label} style={{ flex: 1, textAlign: "center", borderLeft: `1px solid ${C.border}`, padding: "0 20px", minWidth: 80 }}>
             <div style={{ fontSize: 20, fontWeight: 800, color: s.color }}>{s.value}</div>
@@ -1254,19 +1188,12 @@ function DashboardView({ C }) {
           </div>
         ))}
         <div style={{ marginLeft: "auto", paddingLeft: 20, borderLeft: `1px solid ${C.border}` }}>
-          <div style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            padding: "8px 16px", borderRadius: 10, background: C.primary,
-            color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer",
-          }}>View profile →</div>
+          <button onClick={onViewProfile} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 10, background: C.primary, color: "#fff", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "inherit" }}>View profile →</button>
         </div>
       </div>
 
-      {/* Main Content Grid */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20 }}>
-        {/* Left Column */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20, minWidth: 0 }}>
-          {/* Recent Questions */}
           <div style={{ background: C.surfaceElevated, border: `1px solid ${C.border}`, borderRadius: 16, padding: "20px", boxShadow: C.cardShadow }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 16, borderBottom: `1px solid ${C.border}`, marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
               <div>
@@ -1275,12 +1202,7 @@ function DashboardView({ C }) {
               </div>
               <div style={{ display: "flex", gap: 6 }}>
                 {["all", "open", "resolved"].map(tab => (
-                  <button key={tab} onClick={() => setActiveTab(tab)} style={{
-                    padding: "5px 12px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 500, cursor: "pointer",
-                    transition: "all 0.2s ease",
-                    background: activeTab === tab ? C.primary : C.surface,
-                    color: activeTab === tab ? "#fff" : C.textSecondary,
-                  }}>
+                  <button key={tab} onClick={() => setActiveTab(tab)} style={{ padding: "5px 12px", borderRadius: 8, border: "none", fontSize: 12, fontWeight: 500, cursor: "pointer", transition: "all 0.2s ease", background: activeTab === tab ? C.primary : C.surface, color: activeTab === tab ? "#fff" : C.textSecondary }}>
                     {tab.charAt(0).toUpperCase() + tab.slice(1)}
                   </button>
                 ))}
@@ -1288,33 +1210,31 @@ function DashboardView({ C }) {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {filteredQuestions.length > 0
-                ? filteredQuestions.map(q => <QuestionCard key={q.id} q={q} C={C} />)
-                : <SectionEmptyState C={C} status={errors.questions} icon="💬" emptyTitle="No questions yet" emptyHint="Be the first to start a discussion." />}
+                ? filteredQuestions.map(q => <QuestionCard key={q.id} q={q} />)
+                : <SectionEmptyState status={errors.questions} icon="💬" emptyTitle="No questions yet" emptyHint="Be the first to start a discussion." />}
             </div>
-            <button style={{ width: "100%", marginTop: 16, padding: "10px", borderRadius: 10, border: `1px dashed ${C.border}`, background: C.surface, color: C.primary, fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.2s ease" }}>
+            <button onClick={onViewQuestions} style={{ width: "100%", marginTop: 16, padding: "10px", borderRadius: 10, border: `1px dashed ${C.border}`, background: C.surface, color: C.primary, fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "all 0.2s ease" }}>
               View all questions →
             </button>
           </div>
 
-          {/* Study Groups */}
           <div style={{ background: C.surfaceElevated, border: `1px solid ${C.border}`, borderRadius: 16, padding: "20px", boxShadow: C.cardShadow }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 16, borderBottom: `1px solid ${C.border}`, marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 2 }}>Study Groups</div>
                 <div style={{ fontSize: 12, color: C.textSecondary }}>Collaborate with peers in real-time</div>
               </div>
-              <button style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: C.primary, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-                <span>+</span> Create Group
+              <button onClick={onViewGroups} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: C.primary, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                View Groups →
               </button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
               {studyGroups.length > 0
-                ? studyGroups.map(g => <StudyGroupCard key={g.id} group={g} C={C} />)
-                : <SectionEmptyState C={C} status={errors.studyGroups} icon="👥" emptyTitle="No study groups yet" emptyHint="Create one to start collaborating with peers." />}
+                ? studyGroups.map(g => <StudyGroupCard key={g.id} group={g} />)
+                : <SectionEmptyState status={errors.studyGroups} icon="👥" emptyTitle="No study groups yet" emptyHint="Create one to start collaborating with peers." />}
             </div>
           </div>
 
-          {/* Resources */}
           <div style={{ background: C.surfaceElevated, border: `1px solid ${C.border}`, borderRadius: 16, padding: "20px", boxShadow: C.cardShadow }}>
             <div style={{ paddingBottom: 16, borderBottom: `1px solid ${C.border}`, marginBottom: 16 }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 2 }}>Top Resources</div>
@@ -1322,34 +1242,31 @@ function DashboardView({ C }) {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {resources.length > 0
-                ? resources.map(r => <ResourceCard key={r.id} r={r} C={C} />)
-                : <SectionEmptyState C={C} status={errors.resources} icon="📚" emptyTitle="No resources yet" emptyHint="Shared resources will show up here." />}
+                ? resources.map(r => <ResourceCard key={r.id} r={r} />)
+                : <SectionEmptyState status={errors.resources} icon="📚" emptyTitle="No resources yet" emptyHint="Shared resources will show up here." />}
             </div>
           </div>
         </div>
 
-        {/* Right Column */}
         <div style={{ display: "flex", flexDirection: "column", gap: 20, minWidth: 0, maxWidth: 400 }}>
-          {/* Leaderboard */}
           <div style={{ background: C.surfaceElevated, border: `1px solid ${C.border}`, borderRadius: 16, padding: "20px", boxShadow: C.cardShadow }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 16, borderBottom: `1px solid ${C.border}`, marginBottom: 16 }}>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 2 }}>🏆 Leaderboard</div>
                 <div style={{ fontSize: 12, color: C.textSecondary }}>Top performers this week</div>
               </div>
-              <Badge label="Weekly" bg={C.warningLight} color={C.warning} C={C} />
+              <Badge label="Weekly" bg={C.warningLight} color={C.warning} />
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {leaderboard.length > 0
-                ? leaderboard.map(p => <LeaderboardRow key={p.rank} p={p} C={C} />)
-                : <SectionEmptyState C={C} status={errors.leaderboard} icon="🏆" emptyTitle="No rankings yet" emptyHint="Rankings update weekly as the community gets active." />}
+                ? leaderboard.map(p => <LeaderboardRow key={p.rank} p={p} />)
+                : <SectionEmptyState status={errors.leaderboard} icon="🏆" emptyTitle="No rankings yet" emptyHint="Rankings update weekly as the community gets active." />}
             </div>
-            <button style={{ width: "100%", marginTop: 12, padding: "10px", borderRadius: 10, border: "none", background: C.primaryLight, color: C.primary, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease" }}>
+            <button onClick={onViewLeaderboard} style={{ width: "100%", marginTop: 12, padding: "10px", borderRadius: 10, border: "none", background: C.primaryLight, color: C.primary, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease" }}>
               View full leaderboard →
             </button>
           </div>
 
-          {/* Activity Feed */}
           <div style={{ background: C.surfaceElevated, border: `1px solid ${C.border}`, borderRadius: 16, padding: "20px", boxShadow: C.cardShadow }}>
             <div style={{ paddingBottom: 16, borderBottom: `1px solid ${C.border}`, marginBottom: 12 }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: C.text, marginBottom: 2 }}>⚡ Live Activity</div>
@@ -1357,12 +1274,11 @@ function DashboardView({ C }) {
             </div>
             <div>
               {activity.length > 0
-                ? activity.map(a => <ActivityItem key={a.id} activity={a} C={C} />)
-                : <SectionEmptyState C={C} status={errors.activity} icon="⚡" emptyTitle="No recent activity" emptyHint="Live activity will appear here as it happens." />}
+                ? activity.map(a => <ActivityItem key={a.id} activity={a} />)
+                : <SectionEmptyState status={errors.activity} icon="⚡" emptyTitle="No recent activity" emptyHint="Live activity will appear here as it happens." />}
             </div>
           </div>
 
-          {/* Quick Actions */}
           <div style={{ background: C.gradientHero, borderRadius: 16, padding: "20px", color: "#fff" }}>
             <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Quick Actions</div>
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 16 }}>Get things done faster</div>
@@ -1372,12 +1288,7 @@ function DashboardView({ C }) {
                 { icon: "👥", label: "Join a study group", desc: "Collaborate with peers", path: "/groups" },
                 { icon: "📚", label: "Share a resource", desc: "Contribute to the library", path: "/resources" },
               ].map((action, i) => (
-                <button key={i} onClick={() => navigate(action.path)} style={{
-                  display: "flex", alignItems: "center", gap: 12, padding: "12px 14px",
-                  borderRadius: 10, background: "rgba(255,255,255,0.08)",
-                  border: "1px solid rgba(255,255,255,0.1)", color: "#fff",
-                  cursor: "pointer", transition: "all 0.2s ease", textAlign: "left", width: "100%",
-                }}>
+                <button key={i} onClick={() => navigate(action.path)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 10, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", color: "#fff", cursor: "pointer", transition: "all 0.2s ease", textAlign: "left", width: "100%" }}>
                   <span style={{ fontSize: 20 }}>{action.icon}</span>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 600 }}>{action.label}</div>
@@ -1397,7 +1308,8 @@ function DashboardView({ C }) {
 // ═════════════════════════════════════════════════════════════════════════════
 //  PLACEHOLDER VIEW
 // ═════════════════════════════════════════════════════════════════════════════
-function PlaceholderView({ label, icon, C, hint }) {
+function PlaceholderView({ label, icon, hint }) {
+  const { C } = useTheme();
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, background: C.surfaceElevated, borderRadius: 16, border: `1px solid ${C.border}`, minHeight: 500, boxShadow: C.cardShadow }}>
       <div style={{ fontSize: 64, filter: "grayscale(0.3)", opacity: 0.8 }}>{icon}</div>
@@ -1410,37 +1322,21 @@ function PlaceholderView({ label, icon, C, hint }) {
 }
 
 // ─── Forum sub-router ─────────────────────────────────────────────────────────
-// QuestionFeed owns its own layout/theme (forumTheme.css), so it doesn't take C.
-function ForumSection({ C }) {
-  return <QuestionFeed />;
+function ForumSection() {
+  const { themeMode, toggleTheme } = useTheme();
+  return <QuestionFeed themeMode={themeMode} onToggleTheme={toggleTheme}/>;
 }
 
 // ─── Resources section wrapper ────────────────────────────────────────────────
-function ResourcesSection({ C }) {
+function ResourcesSection() {
   const [showForm, setShowForm] = useState(false);
-
   return (
     <>
       <ResourceList onAdd={() => setShowForm(true)} />
       {showForm && (
-        <div
-          style={{
-            position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            zIndex: 1000, padding: 20,
-          }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false); }}
-        >
-          <div style={{
-            background: "#fff", borderRadius: 16, padding: 24, width: "100%",
-            maxWidth: 480, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 48px rgba(0,0,0,0.25)",
-          }}>
-            {/* NOTE: prop names below (onClose/onSuccess) are a best guess —
-               confirm they match your actual ResourceForm implementation. */}
-            <ResourceForm
-              onClose={() => setShowForm(false)}
-              onSuccess={() => setShowForm(false)}
-            />
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }} onClick={(e) => { if (e.target === e.currentTarget) setShowForm(false); }}>
+          <div style={{ background: "#fff", borderRadius: 16, padding: 24, width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 48px rgba(0,0,0,0.25)" }}>
+            <ResourceForm onClose={() => setShowForm(false)} onSuccess={() => setShowForm(false)} />
           </div>
         </div>
       )}
@@ -1449,38 +1345,31 @@ function ResourcesSection({ C }) {
 }
 
 // ─── Gamification section ─────────────────────────────────────────────────────
-function GamificationSection({ C }) {
-  return <GamificationDashboard />;
+function GamificationSection() {
+  const { themeMode, toggleTheme } = useTheme();
+  return <GamificationDashboard themeMode={themeMode} onToggleTheme={toggleTheme} />;
 }
 
 // ─── Profile section ───────────────────────────────────────────────────────────
-function ProfileSection({ C }) {
+function ProfileSection() {
+  const { C } = useTheme();
   return <ProfilePage C={C} />;
 }
 
 // ─── Study Groups section ───────────────────────────────────────────────────────
-// GroupList owns its own layout/theme (styled-components), so it doesn't take C.
-// onAdd/onView navigate to real routes, matching the convention QuestionFeed
-// already uses (Link to "/forum/ask", "/forum/questions/:id") — confirm
-// "/groups/new" and "/groups/:id" are mounted in your router.
-function GroupsSection({ C }) {
+function GroupsSection() {
   const navigate = useNavigate();
-  return (
-    <GroupList
-      onAdd={() => navigate("/groups/new")}
-      onView={(id) => navigate(`/groups/${id}`)}
-    />
-  );
+  return <GroupList onAdd={() => navigate("/groups/new")} onView={(id) => navigate(`/groups/${id}`)} />;
 }
 
 // ─── Section renderer ─────────────────────────────────────────────────────────
-function ActiveSection({ active, C }) {
+function ActiveSection({ active }) {
   switch (active) {
-    case "forum":        return <ForumSection C={C} />;
-    case "resources":    return <ResourcesSection C={C} />;
-    case "gamification": return <GamificationSection C={C} />;
-    case "profile":      return <ProfileSection C={C} />;
-    case "groups":       return <GroupsSection C={C} />;
+    case "forum":        return <ForumSection />;
+    case "resources":    return <ResourcesSection />;
+    case "gamification": return <GamificationSection />;
+    case "profile":      return <ProfileSection />;
+    case "groups":       return <GroupsSection />;
     default:             return null;
   }
 }
@@ -1489,10 +1378,11 @@ function ActiveSection({ active, C }) {
 //  ROOT COMPONENT
 // ═════════════════════════════════════════════════════════════════════════════
 export default function MainDashboard() {
-  const { C, themeMode, toggleTheme } = useTheme();
+  const { C } = useTheme(); // Consuming global context directly
   const [active, setActive] = useLocalStorage('educonnect-active-tab', 'dashboard');
   const [collapsed, setCollapsed] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isMobile = useMediaQuery('(max-width: 768px)');
@@ -1501,6 +1391,15 @@ export default function MainDashboard() {
     const token = localStorage.getItem("access_token");
     setIsLoggedIn(!!token);
   }, []);
+
+  useEffect(() => {
+    if (!isLoggedIn) { setUser(null); return; }
+    let mounted = true;
+    dashboardApi.getUser()
+      .then(data => { if (mounted) setUser(data); })
+      .catch(err => console.error("Sidebar: failed to load current user", err));
+    return () => { mounted = false; };
+  }, [isLoggedIn]);
 
   const handleNav = (key) => {
     if (!isLoggedIn && key !== "dashboard" && key !== "forum") return;
@@ -1515,6 +1414,7 @@ export default function MainDashboard() {
     localStorage.removeItem('user_name');
     localStorage.removeItem('user_email');
     setIsLoggedIn(false);
+    setUser(null);
     setActive('dashboard');
   };
 
@@ -1543,37 +1443,23 @@ export default function MainDashboard() {
         collapsed={collapsed}
         onToggleCollapse={handleToggleCollapse}
         isLoggedIn={isLoggedIn}
+        user={user}
         onLogout={handleLogout}
-        C={C}
-        themeMode={themeMode}
-        onToggleTheme={toggleTheme}
         isMobile={isMobile}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
       />
 
       <main style={{
-        flex: 1,
-        padding: isMobile ? "16px" : "28px 32px",
-        overflowY: "auto",
-        minHeight: "100vh",
-        animation: "fadeIn 0.4s ease",
-        position: "relative",
+        flex: 1, padding: isMobile ? "16px" : "28px 32px", overflowY: "auto", minHeight: "100vh",
+        animation: "fadeIn 0.4s ease", position: "relative",
       }}>
-        {/* Mobile header */}
         {isMobile && (
           <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            marginBottom: 20, padding: "12px 16px", background: C.surfaceElevated,
-            borderRadius: 12, border: `1px solid ${C.border}`, boxShadow: C.cardShadow,
+            display: "flex", alignItems: "center", justifycontent: "space-between", marginBottom: 20,
+            padding: "12px 16px", background: C.surfaceElevated, borderRadius: 12, border: `1px solid ${C.border}`, boxShadow: C.cardShadow,
           }}>
-            <button
-              onClick={() => setMobileMenuOpen(true)}
-              style={{
-                background: "none", border: "none", fontSize: 24, cursor: "pointer",
-                color: C.text, padding: 4,
-              }}
-            >☰</button>
+            <button onClick={() => setMobileMenuOpen(true)} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: C.text, padding: 4 }}>☰</button>
             <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>EduConnect</div>
             <div style={{ width: 32 }} />
           </div>
@@ -1581,17 +1467,19 @@ export default function MainDashboard() {
 
         {active === "dashboard"
           ? (isLoggedIn
-              ? <DashboardView C={C} />
-              : <GuestPromoPanel
-                  C={C}
+              ? <DashboardView
+                  onViewProfile={() => handleNav('profile')}
+                  onViewQuestions={() => handleNav('forum')}
+                  onViewLeaderboard={() => handleNav('gamification')}
+                  onViewGroups={() => handleNav('groups')}
                 />
+              : <GuestPromoPanel />
             )
           : ["forum", "resources", "gamification", "profile", "groups"].includes(active)
-            ? <ActiveSection active={active} C={C} />
+            ? <ActiveSection active={active} />
             : <PlaceholderView
                 label={NAV_ITEMS.find(n => n.key === active)?.label ?? active}
                 icon={NAV_ITEMS.find(n => n.key === active)?.icon ?? "🔒"}
-                C={C}
               />
         }
       </main>
