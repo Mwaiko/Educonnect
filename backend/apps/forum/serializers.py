@@ -39,7 +39,7 @@ class AnswerSerializer(serializers.ModelSerializer):
         ]
 
     def get_author(self, obj):
-        return {"id": obj.author_id, "username": obj.author.username}
+        return {"id": obj.author_id, "username": obj.author.first_name}
 
     def get_user_has_upvoted(self, obj):
         request = self.context.get("request")
@@ -81,7 +81,7 @@ class QuestionListSerializer(serializers.ModelSerializer):
         ]
 
     def get_author(self, obj):
-        return {"id": obj.author_id, "username": obj.author.username}
+        return {"id": obj.author_id, "username": obj.author.first_name}
 
     def get_tags(self, obj):
         return [tag.name for tag in obj.tags.all()]

@@ -145,11 +145,13 @@ function QuestionCard({ q, onTagClick, onUpvoteChange, t }) {
           disabled={upvoting}
         />
       </div>
-      <div className="qf-card-body">
+      {/* Wrapping Link makes the whole card body navigable; tag buttons
+          stop propagation so clicking a tag only filters, not navigates. */}
+      <Link to={`/forum/questions/${q.id}`} className="qf-card-body qf-card-link">
         <div className="qf-card-header-row">
-          <Link to={`/forum/questions/${q.id}`} className="qf-card-title">
+          <span className="qf-card-title">
             {q.title}
-          </Link>
+          </span>
           {q.is_resolved && (
             <span className="qf-resolved-badge">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -166,7 +168,7 @@ function QuestionCard({ q, onTagClick, onUpvoteChange, t }) {
               <button
                 key={tag}
                 type="button"
-                onClick={() => onTagClick(tag)}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTagClick(tag); }}
                 className="qf-tag"
               >
                 {tag}
@@ -184,7 +186,7 @@ function QuestionCard({ q, onTagClick, onUpvoteChange, t }) {
             </span>
           </div>
         </div>
-      </div>
+      </Link>
     </li>
   );
 }
@@ -939,6 +941,14 @@ function getStyles(t, mode) {
       display: flex;
       flex-direction: column;
       gap: 0.4rem;
+    }
+    .qf-card-link {
+      text-decoration: none;
+      color: inherit;
+      cursor: pointer;
+    }
+    .qf-card-link:hover .qf-card-title {
+      color: ${t.primary};
     }
     .qf-card-header-row {
       display: flex;

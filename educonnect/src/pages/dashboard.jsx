@@ -10,13 +10,37 @@ import ResourceList       from "./Resources/ResourceList";
 import ResourceForm       from "./Resources/ResourceForm";
 import ProfilePage        from "./profile/ProfilePage";
 import GroupList          from "./Groups/GroupList";
+import GroupDetail        from "./Groups/GroupDetail";
 
 // Removed the old local THEMES configuration
+
+// Deterministically pick one of the theme color keys from an author id/username
+// so every author always gets the same colour across renders.
+const AUTHOR_COLORS = ["primary", "accent", "success", "warning", "danger"];
+function hashAuthorColor(author) {
+  const seed = String(author?.id ?? author?.username ?? "");
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return AUTHOR_COLORS[h % AUTHOR_COLORS.length];
+}
+
+// Converts a raw API question object into the shape QuestionCard expects.
+function normalizeQuestion(q) {
+  return {
+    ...q,
+    upvotes:     q.upvote_count  ?? 0,
+    answers:     q.answer_count  ?? 0,
+    time:        q.created_at,
+    status:      q.is_resolved ? "resolved" : "open",
+    tags:        Array.isArray(q.tags) ? q.tags : [],
+    authorColor: hashAuthorColor(q.author),
+  };
+}
 
 const dashboardApi = {
   getUser:          () => api.get("/auth/me/").then(r => r.data),
   getStats:         () => api.get("/dashboard/stats/").then(r => r.data),
-  getQuestions:     () => api.get("/forum/questions/?page_size=5&ordering=-created_at").then(r => r.data.results ?? r.data),
+  getQuestions:     () => api.get("/forum/questions/?page_size=5&ordering=-created_at").then(r => (r.data.results ?? r.data).map(normalizeQuestion)),
   getStudyGroups:   () => api.get("/groups/?page_size=5").then(r => r.data.results ?? r.data),
   getNotifications: () => api.get("/notifications/").then(r => r.data.results ?? r.data),
   getLeaderboard:   () => api.get("/gamification/leaderboard/?timeframe=weekly").then(r => r.data.leaderboard ?? r.data),
@@ -33,6 +57,9 @@ function getDisplayName(user, fallback = "there") {
 }
 function getInitials(user) {
   if (!user) return "?";
+  if (typeof user === "string") {
+    return user.trim() ? user.trim()[0].toUpperCase() : "?";
+  }
   if (user.initials) return user.initials;
   const f = user.first_name?.[0] ?? user.username?.[0] ?? "";
   const l = user.last_name?.[0] ?? "";
@@ -96,7 +123,7 @@ function useMediaQuery(query) {
 //  SHARED SUB-COMPONENTS
 // ═════════════════════════════════════════════════════════════════════════════
 function Avatar({ initials, color, size = 36, overlap = false, ring = false }) {
-  const { C } = useTheme(); // Consuming context directly
+  const { C } = useTheme(); 
   const resolvedColor = C[color] || color || C.primary;
   return (
     <div style={{
@@ -447,7 +474,7 @@ function QuestionCard({ q, blurred = false }) {
               <Badge key={tag} label={tag} bg={tagColors[tag]?.[0]} color={tagColors[tag]?.[1]} />
             ))}
             <span style={{ fontSize: 11, color: C.textSecondary, marginLeft: "auto", display: "flex", alignItems: "center", gap: 4 }}>
-              <Avatar initials={q.author} color={authorColor} size={20} />
+              <Avatar initials={getInitials(q.author)} color={authorColor} size={20} />
               <span>{q.time}</span>
               <span style={{ color: C.border }}>•</span>
               <span>{q.answers} answers</span>
@@ -611,11 +638,23 @@ function LeaderboardRow({ p }) {
   );
 }
 
+const RESOURCE_TYPE_COLOR = {
+  textbook: "primary",
+  article: "accent",
+  video: "warning",
+  website: "success",
+  other: "textSecondary",
+};
+
 function ResourceCard({ r }) {
   const { C } = useTheme();
   const [hovered, setHovered] = useState(false);
-  const [voted, setVoted] = useState(false);
-  const colorValue = C[r.color] || r.color;
+  // Seed local vote state from what the API already told us about this user's vote.
+  const [voted, setVoted] = useState(r.user_vote === 1);
+  const colorValue = C[RESOURCE_TYPE_COLOR[r.resource_type]] || C.primary;
+  const submitterName = r.submitted_by?.username || "Unknown";
+  const baseVotes = r.net_votes ?? 0;
+  const displayVotes = baseVotes + (voted ? 1 : 0) - (r.user_vote === 1 ? 1 : 0);
   return (
     <div
       onMouseEnter={() => setHovered(true)}
@@ -631,13 +670,13 @@ function ResourceCard({ r }) {
       }}
     >
       <div style={{ width: 40, height: 40, borderRadius: 10, background: `${colorValue}15`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>
-        {r.type === "Website" ? "🌐" : "📖"}
+        {r.resource_type === "website" ? "🌐" : "📖"}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 2 }}>{r.title}</div>
         <div style={{ fontSize: 11, color: C.textSecondary, display: "flex", alignItems: "center", gap: 6 }}>
-          <Badge label={r.subject} bg={`${colorValue}15`} color={colorValue} />
-          <span>by {r.submitter}</span>
+          <Badge label={r.tag || r.resource_type} bg={`${colorValue}15`} color={colorValue} />
+          <span>by {submitterName}</span>
         </div>
       </div>
       <button
@@ -650,7 +689,7 @@ function ResourceCard({ r }) {
         }}
       >
         <div style={{ fontSize: 16, color: voted ? C.primary : C.textSecondary, transform: voted ? "scale(1.15)" : "scale(1)", transition: "all 0.2s ease" }}>▲</div>
-        <div style={{ fontSize: 11, fontWeight: 600, color: voted ? C.primary : C.textSecondary }}>{r.votes + (voted ? 1 : 0)}</div>
+        <div style={{ fontSize: 11, fontWeight: 600, color: voted ? C.primary : C.textSecondary }}>{displayVotes}</div>
       </button>
     </div>
   );
@@ -1356,10 +1395,26 @@ function ProfileSection() {
   return <ProfilePage C={C} />;
 }
 
-// ─── Study Groups section ───────────────────────────────────────────────────────
+// --- Study Groups section -------------------------------------------------------
 function GroupsSection() {
-  const navigate = useNavigate();
-  return <GroupList onAdd={() => navigate("/groups/new")} onView={(id) => navigate(`/groups/${id}`)} />;
+  const [viewingGroupId, setViewingGroupId] = useState(null);
+
+  if (viewingGroupId) {
+    return (
+      <GroupDetail
+        groupId={viewingGroupId}
+        onBack={() => setViewingGroupId(null)}
+        onOpenChat={(id) => console.log("Open chat for group", id)}
+      />
+    );
+  }
+
+  return (
+    <GroupList
+      onAdd={() => {}}
+      onView={(id) => setViewingGroupId(id)}
+    />
+  );
 }
 
 // ─── Section renderer ─────────────────────────────────────────────────────────

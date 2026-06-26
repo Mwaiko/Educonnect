@@ -159,10 +159,14 @@ const IconSearch = () => (
   </svg>
 );
 
+const SpinnerSvg = styled.svg`
+  animation: ${spinnerRotate} 800ms linear infinite;
+`;
+
 const Spinner = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: `${spinnerRotate} 800ms linear infinite` }}>
+  <SpinnerSvg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-  </svg>
+  </SpinnerSvg>
 );
 
 // ─────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 import { Route, Routes } from "react-router-dom";
-import AskQuestionForm from "../components/forum/AskQuestionForm";
-import QuestionDetailPage from "../components/forum/QuestionDetailPage";
-import QuestionFeed from "../components/forum/QuestionFeed";
+import AskQuestionForm from "./AskQuestionForm";
+import QuestionDetailPage from "./QuestionDetailPage";
+import QuestionFeed from "./QuestionFeed";
 
 /**
  * Route subtree for the Forum & Q&A module (Module 2, Mwai Komo).

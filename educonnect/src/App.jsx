@@ -24,6 +24,9 @@ import ChatRoom            from './pages/Chat/ChatRoom';
 import NotificationCenter  from './components/NotificationCenter';
 
 import AskQuestionForm from './pages/forum/AskQuestionForm';
+import QuestionDetail from './pages/forum/QuestionDetailPage';
+
+import ForumRoutes from './pages/forum/ForumRoutes';
 
 import "./styles/tokens.css";
 
@@ -103,7 +106,7 @@ export default function App() {
 
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<MainDashboard />} />
-          <Route path="/forum/ask" element={<AskQuestionForm />} />
+          <Route path="/forum/*" element={<ForumRoutes />} />
           <Route path="/resources" element={
             <RequireAuth>
               <DashboardResources />
