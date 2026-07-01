@@ -1,7 +1,7 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 
-from .views import AnswerViewSet, QuestionViewSet, TagListView
+from .views import AnswerViewSet, QuestionViewSet
 
 router = DefaultRouter()
 router.register(r"questions", QuestionViewSet, basename="question")
@@ -13,7 +13,6 @@ answer_upvote = AnswerViewSet.as_view({"post": "upvote"})
 question_answers_create = AnswerViewSet.as_view({"post": "create_for_question"})
 
 urlpatterns = [
-    path("tags/", TagListView.as_view(), name="forum-tags"),
     path(
         "questions/<uuid:question_id>/answers/",
         question_answers_create,

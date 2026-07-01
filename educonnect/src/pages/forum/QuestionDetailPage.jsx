@@ -357,9 +357,11 @@ export default function QuestionDetailPage() {
           <div className="qdp-meta-row">
             {/* Tags */}
             {question.tags.map((t) => (
-              <Badge key={t} variant="indigo" className="qdp-tag-badge">
-                #{t}
-              </Badge>
+              <span key={t.id} title={t.breadcrumb}>
+                <Badge variant="indigo" className="qdp-tag-badge">
+                  #{t.name}
+                </Badge>
+              </span>
             ))}
 
             {/* Author & Date */}

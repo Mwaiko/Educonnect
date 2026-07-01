@@ -1,11 +1,8 @@
 from django.contrib import admin
 
-from .models import Answer, Question, QuestionTag, Tag
+from .models import Answer, Question
+from apps.tag.models import Tag
 
-
-@admin.register(Tag)
-class TagAdmin(admin.ModelAdmin):
-    search_fields = ["name"]
 
 
 class AnswerInline(admin.TabularInline):

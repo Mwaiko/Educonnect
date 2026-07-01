@@ -21,10 +21,13 @@ class StudyGroupListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = StudyGroup.objects.filter(memberships__user=user)
+        queryset = StudyGroup.objects.filter(memberships__user=user).select_related('subject_tag')
         subject = self.request.query_params.get('subject_tag')
         if subject:
-            queryset = queryset.filter(subject_tag__icontains=subject)
+            # subject_tag is now a FK - keep the free-text search UX by
+            # matching against the related Tag's name instead of the old
+            # CharField itself.
+            queryset = queryset.filter(subject_tag__name__icontains=subject)
         return queryset.distinct()
 
     def perform_create(self, serializer):
@@ -48,7 +51,7 @@ class StudyGroupDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = StudyGroupSerializer
 
     def get_queryset(self):
-        return StudyGroup.objects.all()
+        return StudyGroup.objects.select_related('subject_tag')
 
 
 class StudyGroupJoinView(APIView):
@@ -194,6 +197,12 @@ class StudyGroupMatchView(APIView):
 
     def get(self, request):
         user = self.request.user
+        # NOTE: this assumes `user.subjects` now yields leaf Tag ids (uuids)
+        # rather than the old free-text subject strings, since subject_tag
+        # is a FK. If `user.subjects` actually stores something else
+        # (e.g. tag slugs), swap `subject_tag_id__in=user_subjects` below
+        # for `subject_tag__slug__in=user_subjects`. Wasn't able to verify
+        # against the User model, which wasn't provided.
         user_subjects = getattr(user, 'subjects', [])
 
         if not user_subjects:
@@ -201,13 +210,13 @@ class StudyGroupMatchView(APIView):
                 memberships__user=user
             ).filter(
                 memberships__isnull=False
-            ).distinct()[:10]
+            ).select_related('subject_tag').distinct()[:10]
         else:
             groups = StudyGroup.objects.exclude(
                 memberships__user=user
             ).filter(
-                subject_tag__in=user_subjects
-            ).distinct()[:10]
+                subject_tag_id__in=user_subjects
+            ).select_related('subject_tag').distinct()[:10]
 
         serializer = StudyGroupSerializer(groups, many=True, context={'request': request})
         return Response(serializer.data)

@@ -153,7 +153,7 @@ export default function GroupList({ onAdd, onView, onOpenChat }) {
                 <div>
                   <h3 className="group-card-title">{group.name}</h3>
                   <div className="group-card-meta">
-                    {group.subject_tag && <span className="group-badge">{group.subject_tag.toUpperCase()}</span>}
+                    {group.subject_tag && <span className="group-badge">{group.subject_tag.name.toUpperCase()}</span>}
                     <span className="group-badge cyan">{group.formation_type}</span>
                     {group.is_full && <span className="group-badge amber">Full</span>}
                   </div>

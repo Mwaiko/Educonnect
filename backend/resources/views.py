@@ -21,16 +21,26 @@ class ResourceListCreateView(generics.ListCreateAPIView):
     # Browsing the list is public; creating a resource still requires login.
     permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['title', 'tag']
+    search_fields = ['title', 'tag__name']
     ordering_fields = ['net_votes', 'created_at']
     ordering = ['-net_votes']
 
+    def get_serializer_context(self):
+        return {'request': self.request}
+
     def get_queryset(self):
-        queryset = Resource.objects.all()
+        queryset = Resource.objects.select_related('tag', 'submitted_by')
+        # `tag` is now the leaf Tag's id (uuid), not a free-text string -
+        # the picker on the frontend sends whatever id it fetched from
+        # /api/v1/tags/. Also accept `tag_slug` for anyone linking in by
+        # slug (e.g. a bookmarked URL) instead of id.
         tag = self.request.query_params.get('tag')
+        tag_slug = self.request.query_params.get('tag_slug')
         resource_type = self.request.query_params.get('resource_type')
         if tag:
-            queryset = queryset.filter(tag__icontains=tag)
+            queryset = queryset.filter(tag_id=tag)
+        elif tag_slug:
+            queryset = queryset.filter(tag__slug=tag_slug)
         if resource_type:
             queryset = queryset.filter(resource_type=resource_type)
         return queryset
@@ -42,7 +52,7 @@ class ResourceListCreateView(generics.ListCreateAPIView):
 class ResourceDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ResourceSerializer
     permission_classes = [IsAuthenticatedOrReadOnly, IsSubmitterOrReadOnly]
-    queryset = Resource.objects.all()
+    queryset = Resource.objects.select_related('tag', 'submitted_by')
     lookup_field = 'pk'
 
     def get_serializer_context(self):

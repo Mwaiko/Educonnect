@@ -1,8 +1,8 @@
 from django.db import transaction
 from rest_framework import serializers
 
-from tag.models import Tag
-from tag.serializers import TagSerializer
+from apps.tag.models import Tag
+from apps.tag.serializers import TagSerializer
 
 from .models import Answer, Question
 

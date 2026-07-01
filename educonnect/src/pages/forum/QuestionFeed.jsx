@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import forumApi from "../../api/forumApi";
+import { getTags } from "../../api/tags";
 import UpvoteButton from "./UpvoteButton";
 
 // ─── Theme System (shared with GamificationDashboard) ─────────────────────────
@@ -166,12 +167,13 @@ function QuestionCard({ q, onTagClick, onUpvoteChange, t }) {
           <div className="qf-card-tags">
             {q.tags.map((tag) => (
               <button
-                key={tag}
+                key={tag.id}
                 type="button"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTagClick(tag); }}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTagClick(tag.slug); }}
                 className="qf-tag"
+                title={tag.breadcrumb}
               >
-                {tag}
+                {tag.name}
               </button>
             ))}
           </div>
@@ -193,7 +195,7 @@ function QuestionCard({ q, onTagClick, onUpvoteChange, t }) {
 
 function FilterBar({
   search, setSearch, tag, setTag, ordering, setOrdering,
-  isResolved, setIsResolved, onSearchSubmit, t
+  isResolved, setIsResolved, onSearchSubmit, t, availableTags, tagsLoading
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -232,14 +234,18 @@ function FilterBar({
         <div className="qf-filter-row">
           <div className="qf-filter-group">
             <label className="qf-filter-label">Tag</label>
-            <input
-              type="text"
+            <select
               value={tag}
               onChange={(e) => setTag(e.target.value)}
-              placeholder="e.g. algorithms"
               aria-label="Filter by tag"
-              className="qf-input"
-            />
+              className="qf-select"
+              disabled={tagsLoading}
+            >
+              <option value="">{tagsLoading ? "Loading tags…" : "All tags"}</option>
+              {availableTags.map((t) => (
+                <option key={t.id} value={t.slug}>{t.name}</option>
+              ))}
+            </select>
           </div>
           <div className="qf-filter-group">
             <label className="qf-filter-label">Sort by</label>
@@ -356,9 +362,19 @@ export default function QuestionFeed({ themeMode, onToggleTheme } = {}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [mounted, setMounted] = useState(false);
+  const [availableTags, setAvailableTags] = useState([]);
+  const [tagsLoading, setTagsLoading] = useState(true);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    setTagsLoading(true);
+    getTags({ level: "tag" })
+      .then((res) => setAvailableTags(res.data?.results ?? res.data ?? []))
+      .catch(() => {})
+      .finally(() => setTagsLoading(false));
   }, []);
 
   const fetchQuestions = useCallback(async () => {
@@ -452,7 +468,7 @@ export default function QuestionFeed({ themeMode, onToggleTheme } = {}) {
             </div>
             {tag && (
               <div className="qf-active-filter">
-                <span>Tag: <strong>{tag}</strong></span>
+                <span>Tag: <strong>{availableTags.find((t) => t.slug === tag)?.name || tag}</strong></span>
                 <button onClick={() => { setTag(""); setPage(1); }} aria-label="Clear tag filter">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="18" y1="6" x2="6" y2="18" />
@@ -486,6 +502,8 @@ export default function QuestionFeed({ themeMode, onToggleTheme } = {}) {
             setIsResolved={setIsResolved}
             onSearchSubmit={handleSearchSubmit}
             t={t}
+            availableTags={availableTags}
+            tagsLoading={tagsLoading}
           />
 
           {/* Error */}

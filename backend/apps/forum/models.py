@@ -17,7 +17,7 @@ class Question(models.Model):
     title = models.CharField(max_length=255)
     body = models.TextField()
     tags = models.ManyToManyField(
-        "tags.Tag", through="QuestionTag", related_name="questions", blank=True
+        "tag.Tag", through="QuestionTag", related_name="questions", blank=True
     )
     is_resolved = models.BooleanField(default=False)
     upvote_count = models.IntegerField(default=0)
@@ -54,7 +54,7 @@ class QuestionTag(models.Model):
     """
 
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
-    tag = models.ForeignKey("tags.Tag", on_delete=models.CASCADE)
+    tag = models.ForeignKey("tag.Tag", on_delete=models.CASCADE)
 
     class Meta:
         db_table = "forum_question_tags"
@@ -65,7 +65,7 @@ class QuestionTag(models.Model):
         ]
 
     def clean(self):
-        from tags.models import Tag
+        from tag.models import Tag
 
         if self.tag_id and self.tag.level != Tag.Level.TAG:
             raise ValidationError(

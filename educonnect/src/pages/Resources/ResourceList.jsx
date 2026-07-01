@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getResources, voteResource, deleteResource } from '../../api/resources';
 import { useTheme } from '../../context/ThemeContext';
+import TagPicker from './TagPicker';
 import './resources.css';
 
 export default function ResourceList({ onAdd }) {
@@ -9,7 +10,7 @@ export default function ResourceList({ onAdd }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
-  const [tag, setTag] = useState('');
+  const [tagId, setTagId] = useState(null);
   const [resourceType, setResourceType] = useState('');
 
   // Map dynamic theme variables to CSS custom properties
@@ -35,7 +36,7 @@ export default function ResourceList({ onAdd }) {
     try {
       const params = {};
       if (search) params.search = search;
-      if (tag) params.tag = tag;
+      if (tagId) params.tag = tagId;
       if (resourceType) params.resource_type = resourceType;
       const res = await getResources(params);
       const list = Array.isArray(res.data?.results)
@@ -61,7 +62,7 @@ export default function ResourceList({ onAdd }) {
   useEffect(() => {
     const delay = setTimeout(fetchResources, 400);
     return () => clearTimeout(delay);
-  }, [search, tag, resourceType]);
+  }, [search, tagId, resourceType]);
 
   const handleVote = async (id, value) => {
     try {
@@ -104,14 +105,11 @@ export default function ResourceList({ onAdd }) {
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
-        <select className="res-select" value={tag} onChange={e => setTag(e.target.value)}>
-          <option value="">All subjects</option>
-          <option value="algorithms">Algorithms</option>
-          <option value="mathematics">Mathematics</option>
-          <option value="data-structures">Data Structures</option>
-          <option value="databases">Databases</option>
-          <option value="networks">Networks</option>
-        </select>
+        <TagPicker
+          value={tagId}
+          onChange={(id) => setTagId(id)}
+          selectClassName="res-select"
+        />
         <select className="res-select" value={resourceType} onChange={e => setResourceType(e.target.value)}>
           <option value="">All types</option>
           <option value="textbook">Textbook</option>
@@ -147,7 +145,7 @@ export default function ResourceList({ onAdd }) {
                   {resource.title}
                 </a>
                 <div className="res-card-meta">
-                  {resource.tag && <span className="res-badge">{resource.tag}</span>}
+                  {resource.tag && <span className="res-badge" title={resource.tag.breadcrumb}>{resource.tag.name}</span>}
                   {resource.resource_type && <span className="res-type-badge">{resource.resource_type}</span>}
                 </div>
                 {resource.submitted_by && (

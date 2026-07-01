@@ -2,6 +2,8 @@ import uuid
 from django.db import models
 from django.conf import settings
 
+from apps.tag.models import Tag
+
 
 class StudyGroup(models.Model):
     FORMATION_TYPES = [
@@ -11,7 +13,17 @@ class StudyGroup(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=150)
-    subject_tag = models.CharField(max_length=80, blank=True, null=True)
+    # Was free-text CharField (source of the fake 'algorithms' etc. options
+    # in GroupForm). Now a real link into the shared taxonomy, restricted to
+    # leaf-level tags - same pattern as Resource.tag.
+    subject_tag = models.ForeignKey(
+        Tag,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='study_groups',
+        limit_choices_to={'level': Tag.Level.TAG},
+    )
     formation_type = models.CharField(max_length=20, choices=FORMATION_TYPES, default='manual')
     max_members = models.PositiveIntegerField(default=8)
     created_by = models.ForeignKey(

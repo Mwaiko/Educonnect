@@ -89,7 +89,7 @@ export default function GroupDetail({ groupId, onBack, onOpenChat }) {
       <div className="group-detail-header">
         <h1 className="group-detail-name">{group.name}</h1>
         <div className="group-detail-header-meta">
-          {group.subject_tag && <span className="group-detail-header-badge">{group.subject_tag.toUpperCase()}</span>}
+          {group.subject_tag && <span className="group-detail-header-badge">{group.subject_tag.name.toUpperCase()}</span>}
           <span className="group-detail-header-badge">{group.formation_type}</span>
           {group.is_full && <span className="group-detail-header-badge full">Full</span>}
         </div>

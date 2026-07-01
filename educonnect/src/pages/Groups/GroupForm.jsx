@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { createGroup } from '../../api/groups';
+import { getTags } from '../../api/tags';
 
 const IconClose = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -69,7 +70,11 @@ const Spinner = () => (
 );
 
 export default function GroupForm({ onClose, onSuccess }) {
+  // subject_tag now holds the selected leaf tag's id (uuid), not a
+  // hardcoded string. selectedTag mirrors it as the full {id, name,
+  // breadcrumb} object purely for display (button label, preview badge).
   const [form, setForm] = useState({ name: '', subject_tag: '', max_members: 8 });
+  const [selectedTag, setSelectedTag] = useState(null);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [loading, setLoading] = useState(false);
@@ -77,14 +82,28 @@ export default function GroupForm({ onClose, onSuccess }) {
   const [selectOpen, setSelectOpen] = useState(false);
   const [selectSearch, setSelectSearch] = useState('');
 
+  const [subjects, setSubjects] = useState([]);
+  const [subjectsLoading, setSubjectsLoading] = useState(true);
+  const [subjectsError, setSubjectsError] = useState(null);
+
   const modalRef = useRef(null);
   const nameInputRef = useRef(null);
   const selectRef = useRef(null);
   const searchInputRef = useRef(null);
 
   const MAX_NAME_LENGTH = 50;
-  const SUBJECTS_LIST = ['algorithms', 'mathematics', 'data-structures', 'databases', 'networks'];
   const colors = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B'];
+
+  // Leaf-level tags from the shared taxonomy, fetched once. Flat + a
+  // breadcrumb label rather than a 3-level cascade, so the existing
+  // searchable dropdown UX doesn't need to change shape.
+  useEffect(() => {
+    setSubjectsLoading(true);
+    getTags({ level: 'tag' })
+      .then(res => setSubjects(res.data?.results ?? res.data ?? []))
+      .catch(() => setSubjectsError('Could not load subjects.'))
+      .finally(() => setSubjectsLoading(false));
+  }, []);
 
   useEffect(() => {
     if (nameInputRef.current) nameInputRef.current.focus();
@@ -147,8 +166,9 @@ export default function GroupForm({ onClose, onSuccess }) {
     }
   };
 
-  const handleSelectSubject = (subject) => {
-    setForm(prev => ({ ...prev, subject_tag: subject }));
+  const handleSelectSubject = (tag) => {
+    setForm(prev => ({ ...prev, subject_tag: tag.id }));
+    setSelectedTag(tag);
     setErrors(prev => {
       const next = { ...prev };
       delete next.subject_tag;
@@ -186,7 +206,10 @@ export default function GroupForm({ onClose, onSuccess }) {
 
   const isNameValid = form.name.trim().length >= 3 && form.name.trim().length <= MAX_NAME_LENGTH;
   const showNameError = touched.name && errors.name;
-  const filteredSubjects = SUBJECTS_LIST.filter(s => s.toLowerCase().includes(selectSearch.toLowerCase()));
+  const filteredSubjects = subjects.filter(tag => {
+    const haystack = `${tag.name} ${tag.breadcrumb ?? ''}`.toLowerCase();
+    return haystack.includes(selectSearch.toLowerCase());
+  });
 
   return createPortal(
     <div className="group-feature-root">
@@ -253,7 +276,7 @@ export default function GroupForm({ onClose, onSuccess }) {
                   onClick={() => setSelectOpen(!selectOpen)}
                   className={`group-form-select-trigger ${form.subject_tag ? 'has-value' : ''} ${touched.subject_tag && errors.subject_tag ? 'has-error' : ''}`}
                 >
-                  {form.subject_tag ? form.subject_tag.toUpperCase() : 'Select a subject'}
+                  {selectedTag ? selectedTag.name.toUpperCase() : (subjectsLoading ? 'Loading subjects…' : 'Select a subject')}
                   <div className={`group-form-select-arrow ${selectOpen ? 'open' : ''}`}><IconChevronDown /></div>
                 </button>
 
@@ -270,18 +293,23 @@ export default function GroupForm({ onClose, onSuccess }) {
                         className="group-form-dropdown-search-input"
                       />
                     </div>
-                    {filteredSubjects.length > 0 ? (
-                      filteredSubjects.map((subject) => (
+                    {subjectsError ? (
+                      <div className="group-form-dropdown-empty">{subjectsError}</div>
+                    ) : filteredSubjects.length > 0 ? (
+                      filteredSubjects.map((tag) => (
                         <div
-                          key={subject}
-                          onClick={() => handleSelectSubject(subject)}
-                          className={`group-form-dropdown-option ${form.subject_tag === subject ? 'selected' : ''}`}
+                          key={tag.id}
+                          onClick={() => handleSelectSubject(tag)}
+                          className={`group-form-dropdown-option ${form.subject_tag === tag.id ? 'selected' : ''}`}
+                          title={tag.breadcrumb}
                         >
-                          {subject.toUpperCase()}
+                          {tag.name.toUpperCase()}
                         </div>
                       ))
                     ) : (
-                      <div className="group-form-dropdown-empty">No subjects found</div>
+                      <div className="group-form-dropdown-empty">
+                        {subjectsLoading ? 'Loading…' : 'No subjects found'}
+                      </div>
                     )}
                   </div>
                 )}
@@ -314,7 +342,7 @@ export default function GroupForm({ onClose, onSuccess }) {
               <div className="group-form-preview-card">
                 <div className="group-form-preview-title">{form.name || 'Untitled Study Group'}</div>
                 <div className="group-form-preview-meta">
-                  {form.subject_tag && <span className="group-form-badge">{form.subject_tag.toUpperCase()}</span>}
+                  {selectedTag && <span className="group-form-badge">{selectedTag.name.toUpperCase()}</span>}
                   <span className="group-form-badge secondary">New Group</span>
                 </div>
                 <div className="group-form-preview-members">

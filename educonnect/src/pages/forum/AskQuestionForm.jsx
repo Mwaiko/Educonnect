@@ -1,50 +1,75 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import forumApi from "../../api/forumApi";
+import { getTags } from "../../api/tags";
 import "./forumTheme.css";
 
 const MAX_TITLE = 255;
 
 /**
  * Ask Question Form — EduConnect Design System v2
- * Inspired by Stack Overflow's clear title/body/tag separation + inline guidance.
  * Talks to: POST /api/v1/forum/questions/
+ *
+ * Tags are picked from the shared curated taxonomy (leaf-level Tag rows
+ * only) rather than typed freely — the backend's QuestionCreateSerializer
+ * validates `tags` as a list of existing leaf Tag ids, so free text would
+ * just 400.
  */
 export default function AskQuestionForm() {
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [tagInput, setTagInput] = useState("");
-  const [tags, setTags] = useState([]);
+  const [tags, setTags] = useState([]); // selected: [{id, name, breadcrumb}]
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
 
-  const addTag = () => {
-    const cleaned = tagInput.trim().toLowerCase().replace(/^#/, "");
-    if (!cleaned) return;
+  const [availableTags, setAvailableTags] = useState([]);
+  const [tagsLoading, setTagsLoading] = useState(true);
+  const [tagsLoadError, setTagsLoadError] = useState(null);
+
+  useEffect(() => {
+    setTagsLoading(true);
+    getTags({ level: "tag" })
+      .then((res) => setAvailableTags(res.data?.results ?? res.data ?? []))
+      .catch(() => setTagsLoadError("Could not load tags."))
+      .finally(() => setTagsLoading(false));
+  }, []);
+
+  const suggestions = useMemo(() => {
+    if (!tagInput.trim()) return [];
+    const query = tagInput.trim().toLowerCase();
+    const selectedIds = new Set(tags.map((t) => t.id));
+    return availableTags
+      .filter((t) => !selectedIds.has(t.id))
+      .filter((t) => `${t.name} ${t.breadcrumb ?? ""}`.toLowerCase().includes(query))
+      .slice(0, 8);
+  }, [tagInput, availableTags, tags]);
+
+  const addTag = (tag) => {
     if (tags.length >= 5) {
       setErrors((prev) => ({ ...prev, tags: "Maximum 5 tags allowed." }));
       return;
     }
-    if (!tags.includes(cleaned)) {
-      setTags((prev) => [...prev, cleaned]);
+    if (!tags.some((t) => t.id === tag.id)) {
+      setTags((prev) => [...prev, tag]);
     }
     setTagInput("");
     setErrors((prev) => { const { tags: _, ...rest } = prev; return rest; });
   };
 
   const handleTagKeyDown = (e) => {
-    if (e.key === "Enter" || e.key === ",") {
+    if (e.key === "Enter") {
       e.preventDefault();
-      addTag();
+      if (suggestions.length > 0) addTag(suggestions[0]);
     } else if (e.key === "Backspace" && tagInput === "" && tags.length > 0) {
       setTags((prev) => prev.slice(0, -1));
     }
   };
 
-  const removeTag = (tagToRemove) => {
-    setTags((prev) => prev.filter((t) => t !== tagToRemove));
+  const removeTag = (tagId) => {
+    setTags((prev) => prev.filter((t) => t.id !== tagId));
   };
 
   const validate = () => {
@@ -70,7 +95,7 @@ export default function AskQuestionForm() {
       const question = await forumApi.createQuestion({
         title: title.trim(),
         body: body.trim(),
-        tags,
+        tags: tags.map((t) => t.id),
       });
       navigate(`/forum/questions/${question.id}`);
     } catch (err) {
@@ -177,16 +202,17 @@ export default function AskQuestionForm() {
             Tags
           </label>
           <p className="form-hint">
-            Add up to 5 tags to describe what your question is about.
+            Add up to 5 tags to describe what your question is about — pick
+            from the existing list, you can't create new ones here.
           </p>
-          <div className={`tag-container ${errors.tags ? "error" : ""}`}>
+          <div className={`tag-container ${errors.tags ? "error" : ""}`} style={{ position: "relative" }}>
             {tags.map((t) => (
-              <span key={t} className="tag-chip">
-                {t}
+              <span key={t.id} className="tag-chip" title={t.breadcrumb}>
+                {t.name}
                 <button
                   type="button"
-                  onClick={() => removeTag(t)}
-                  aria-label={`Remove tag ${t}`}
+                  onClick={() => removeTag(t.id)}
+                  aria-label={`Remove tag ${t.name}`}
                   className="tag-remove-btn"
                 >
                   ×
@@ -200,14 +226,59 @@ export default function AskQuestionForm() {
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleTagKeyDown}
-                onBlur={addTag}
                 placeholder={
-                  tags.length === 0
+                  tagsLoading
+                    ? "Loading tags…"
+                    : tags.length === 0
                     ? "e.g. algorithms, graphs..."
                     : "add another"
                 }
+                disabled={tagsLoading}
                 className="tag-input"
+                autoComplete="off"
               />
+            )}
+
+            {suggestions.length > 0 && (
+              <ul
+                className="tag-suggestions"
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  zIndex: 10,
+                  margin: "4px 0 0",
+                  padding: "4px",
+                  listStyle: "none",
+                  background: "var(--ec-surface, #fff)",
+                  border: "1px solid var(--ec-border, #E2E8F0)",
+                  borderRadius: "8px",
+                  boxShadow: "0 8px 20px rgba(0,0,0,0.08)",
+                }}
+              >
+                {suggestions.map((t) => (
+                  <li key={t.id}>
+                    <button
+                      type="button"
+                      onClick={() => addTag(t)}
+                      style={{
+                        width: "100%",
+                        textAlign: "left",
+                        padding: "6px 10px",
+                        background: "none",
+                        border: "none",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        font: "inherit",
+                      }}
+                      title={t.breadcrumb}
+                    >
+                      {t.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
           <div className="form-field-footer">
@@ -215,6 +286,8 @@ export default function AskQuestionForm() {
               <span id="tags-error" role="alert" className="form-error-text">
                 {Array.isArray(errors.tags) ? errors.tags[0] : errors.tags}
               </span>
+            ) : tagsLoadError ? (
+              <span role="alert" className="form-error-text">{tagsLoadError}</span>
             ) : (
               <span />
             )}

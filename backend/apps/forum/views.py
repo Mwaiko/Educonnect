@@ -5,7 +5,7 @@ from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from tags.models import Tag
+from apps.tag.models import Tag
 
 from .models import Answer, AnswerUpvote, Question, QuestionUpvote
 from .permissions import (

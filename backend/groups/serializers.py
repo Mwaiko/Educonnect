@@ -1,6 +1,9 @@
 from rest_framework import serializers
 from .models import StudyGroup, Membership, MeetingLink
 
+from apps.tag.models import Tag
+from apps.tag.serializers import TagSerializer
+
 
 class MeetingLinkSerializer(serializers.ModelSerializer):
     class Meta:
@@ -32,6 +35,10 @@ class StudyGroupSerializer(serializers.ModelSerializer):
     meeting_links = MeetingLinkSerializer(many=True, read_only=True)
     members = serializers.SerializerMethodField()
 
+    # Read: nested tag object (id, name, slug, level, breadcrumb) instead of
+    # the old free-text string.
+    subject_tag = TagSerializer(read_only=True)
+
     class Meta:
         model = StudyGroup
         fields = [
@@ -55,6 +62,14 @@ class StudyGroupSerializer(serializers.ModelSerializer):
 
 
 class CreateStudyGroupSerializer(serializers.ModelSerializer):
+    # Write: client sends the leaf tag's id (from the same picker used for
+    # Resources), not a free-text subject.
+    subject_tag = serializers.PrimaryKeyRelatedField(
+        queryset=Tag.objects.leaf_tags(),
+        required=False,
+        allow_null=True,
+    )
+
     class Meta:
         model = StudyGroup
         fields = ['name', 'subject_tag', 'max_members']

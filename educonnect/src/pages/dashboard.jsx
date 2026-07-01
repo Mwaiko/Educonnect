@@ -22,6 +22,18 @@ function hashAuthorColor(author) {
   return AUTHOR_COLORS[h % AUTHOR_COLORS.length];
 }
 
+// Tag names are now dynamic (real Tag rows from the shared taxonomy) rather
+// than a fixed handful of hardcoded subjects, so colors are hashed from the
+// tag's id instead of a static { "Algorithms": [...] } lookup table.
+const TAG_COLOR_KEYS = ["primary", "accent", "success", "warning"];
+function hashTagColor(tag, C) {
+  const seed = String(tag?.id ?? tag?.slug ?? tag?.name ?? "");
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  const key = TAG_COLOR_KEYS[h % TAG_COLOR_KEYS.length];
+  return [C[`${key}Light`], C[key]];
+}
+
 function normalizeQuestion(q) {
   return {
     ...q,
@@ -347,13 +359,6 @@ function StatCard({ stat }) {
 function QuestionCard({ q, blurred = false }) {
   const { C } = useTheme();
   const [upvoted, setUpvoted] = useState(false);
-  const tagColors = {
-    Algorithms: [C.primaryLight, C.primary],
-    Graphs: [C.themeMode === 'dark' ? "rgba(148,163,184,0.15)" : "#F1F5F9", C.themeMode === 'dark' ? "#94A3B8" : "#475569"],
-    "Operating Systems": [C.accentLight, C.themeMode === 'dark' ? C.accent : "#0E7490"],
-    Databases: [C.successLight, C.themeMode === 'dark' ? C.success : "#065F46"],
-    SQL: [C.themeMode === 'dark' ? "rgba(251,191,36,0.15)" : "#FEF3C7", C.themeMode === 'dark' ? C.warning : "#92400E"],
-  };
   const authorColor = C[q.authorColor] || q.authorColor;
   return (
     <div
@@ -372,9 +377,10 @@ function QuestionCard({ q, blurred = false }) {
           </div>
           <div className="question-desc" style={{ "--text-secondary": C.textSecondary }}>{q.body}</div>
           <div className="question-tags">
-            {q.tags.map(tag => (
-              <Badge key={tag} label={tag} bg={tagColors[tag]?.[0]} color={tagColors[tag]?.[1]} />
-            ))}
+            {q.tags.map(tag => {
+              const [bg, color] = hashTagColor(tag, C);
+              return <Badge key={tag.id} label={tag.name} bg={bg} color={color} />;
+            })}
             <span className="question-meta" style={{ "--text-secondary": C.textSecondary }}>
               <Avatar initials={getInitials(q.author)} color={authorColor} size={20} />
               <span>{q.time}</span>
@@ -550,7 +556,7 @@ function ResourceCard({ r }) {
       <div className="resource-body">
         <div className="resource-title" style={{ "--text": C.text }}>{r.title}</div>
         <div className="resource-meta" style={{ "--text-secondary": C.textSecondary }}>
-          <Badge label={r.tag || r.resource_type} bg={`${colorValue}15`} color={colorValue} />
+          <Badge label={r.tag?.name || r.resource_type} bg={`${colorValue}15`} color={colorValue} />
           <span>by {submitterName}</span>
         </div>
       </div>

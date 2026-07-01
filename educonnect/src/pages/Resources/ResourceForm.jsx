@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { createResource } from '../../api/resources';
+import TagPicker from './TagPicker';
 import './resources.css';
 
 export default function ResourceForm({ onClose, onSuccess }) {
-  const [form, setForm] = useState({ title: '', url: '', resource_type: '', tag: '' });
+  const [form, setForm] = useState({ title: '', url: '', resource_type: '', tag_id: null });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -19,6 +20,11 @@ export default function ResourceForm({ onClose, onSuccess }) {
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
     if (errors[e.target.name]) setErrors({ ...errors, [e.target.name]: null });
+  };
+
+  const handleTagChange = (tagId) => {
+    setForm(prev => ({ ...prev, tag_id: tagId }));
+    if (errors.tag_id) setErrors(prev => ({ ...prev, tag_id: null }));
   };
 
   const handleSubmit = async () => {
@@ -81,15 +87,13 @@ export default function ResourceForm({ onClose, onSuccess }) {
         </div>
 
         <div className="rf-field">
-          <label className="rf-label" htmlFor="tag">Subject</label>
-          <select className="rf-select" id="tag" name="tag" value={form.tag} onChange={handleChange}>
-            <option value="">Select a subject</option>
-            <option value="algorithms">Algorithms</option>
-            <option value="mathematics">Mathematics</option>
-            <option value="data-structures">Data Structures</option>
-            <option value="databases">Databases</option>
-            <option value="networks">Networks</option>
-          </select>
+          <label className="rf-label">Subject</label>
+          <TagPicker
+            value={form.tag_id}
+            onChange={handleTagChange}
+            selectClassName="rf-select"
+          />
+          {errors.tag_id && <p className="rf-error-msg">{errors.tag_id}</p>}
         </div>
 
         <div className="rf-btn-row">
