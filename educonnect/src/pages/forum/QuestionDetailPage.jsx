@@ -9,197 +9,45 @@ import "./forumTheme.css";
 /**
  * Question Detail Page — EduConnect Design System Implementation
  * ================================================================
- * Design Tokens Used:
- *   Primary:   #4F46E5  (--ec-primary)
- *   Primary Light: #EEF2FF (--ec-primary-light)
- *   Primary Mid:   #818CF8 (--ec-primary-mid)
- *   Primary Dark:  #312E81 (--ec-primary-dark)
- *   Accent:    #06B6D4  (--ec-accent)
- *   Accent Light:  #ECFEFF (--ec-accent-light)
- *   Success:   #10B981  (--ec-success)
- *   Warning:   #F59E0B  (--ec-warning)
- *   Danger:    #EF4444  (--ec-danger)
- *   Surface:   #F8FAFC  (--ec-surface)
- *   Border:    rgba(79,70,229,0.18) (--ec-border)
- *   Text:      #1E1B4B  (--ec-text)
- *   Muted:     #6B7280  (--ec-muted)
- *   White:     #FFFFFF  (--ec-white)
- *
- * Typography: Inter, system-ui, sans-serif
- * Border Radius: 8px (buttons), 10px (cards), 12px (large cards), 99px (badges/pills)
- * Shadows: Subtle elevation system
- * Motion: 0.15s–0.3s ease transitions
+ * All styling lives in forumTheme.css (see .qdp-*, .ec-* classes).
  */
 
-/* ── Inline Styles (Design System Tokens) ─────────────────────────── */
-const DS = {
-  // Colors
-  primary: "#4F46E5",
-  primaryLight: "#EEF2FF",
-  primaryMid: "#818CF8",
-  primaryDark: "#312E81",
-  accent: "#06B6D4",
-  accentLight: "#ECFEFF",
-  success: "#10B981",
-  successLight: "#ECFDF5",
-  warning: "#F59E0B",
-  warningLight: "#FFFBEB",
-  danger: "#EF4444",
-  dangerLight: "#FEF2F2",
-  surface: "#F8FAFC",
-  border: "rgba(79,70,229,0.18)",
-  text: "#1E1B4B",
-  muted: "#6B7280",
-  white: "#FFFFFF",
-
-  // Typography
-  fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
-  fontMono: "'SF Mono', 'Fira Code', monospace",
-
-  // Spacing scale
-  space1: "4px",
-  space2: "8px",
-  space3: "12px",
-  space4: "16px",
-  space5: "20px",
-  space6: "24px",
-  space8: "32px",
-  space10: "40px",
-
-  // Border radius
-  radiusSm: "6px",
-  radiusMd: "8px",
-  radiusLg: "10px",
-  radiusXl: "12px",
-  radiusPill: "99px",
-
-  // Shadows
-  shadowSm: "0 1px 2px rgba(0,0,0,0.04)",
-  shadowMd: "0 4px 6px -1px rgba(0,0,0,0.06), 0 2px 4px -2px rgba(0,0,0,0.04)",
-  shadowLg: "0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04)",
-  shadowHover: "0 20px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.04)",
-
-  // Transitions
-  transitionFast: "all 0.15s ease",
-  transitionBase: "all 0.2s ease",
-  transitionSlow: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-};
-
-/* ── Reusable Style Helpers ───────────────────────────────────────── */
-const btnBase = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: "7px",
-  fontFamily: DS.fontFamily,
-  fontSize: "14px",
-  fontWeight: 500,
-  cursor: "pointer",
-  border: "none",
-  borderRadius: DS.radiusMd,
-  padding: "9px 18px",
-  transition: DS.transitionFast,
-};
-
-const btnPrimary = {
-  ...btnBase,
-  background: DS.primary,
-  color: DS.white,
-};
-
-const btnSecondary = {
-  ...btnBase,
-  background: DS.primaryLight,
-  color: DS.primary,
-  border: `1px solid ${DS.border}`,
-};
-
-const btnGhost = {
-  ...btnBase,
-  background: "transparent",
-  color: DS.primary,
-  border: `1px solid ${DS.border}`,
-};
-
-const btnDanger = {
-  ...btnBase,
-  background: DS.dangerLight,
-  color: DS.danger,
-  border: "1px solid rgba(239,68,68,0.25)",
-};
-
-const btnSm = {
-  padding: "6px 13px",
-  fontSize: "12px",
-  borderRadius: DS.radiusSm,
-};
-
-const badgeBase = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: "4px",
-  padding: "3px 10px",
-  borderRadius: DS.radiusPill,
-  fontSize: "12px",
-  fontWeight: 500,
-  fontFamily: DS.fontFamily,
-};
-
-const cardBase = {
-  background: DS.white,
-  border: `0.5px solid ${DS.border}`,
-  borderRadius: DS.radiusLg,
-  transition: DS.transitionSlow,
-};
-
-const inputBase = {
-  width: "100%",
-  padding: "9px 12px",
-  border: `1px solid ${DS.border}`,
-  borderRadius: DS.radiusMd,
-  fontSize: "14px",
-  fontFamily: DS.fontFamily,
-  background: DS.white,
-  color: DS.text,
-  outline: "none",
-  transition: DS.transitionBase,
-};
-
 /* ── SVG Icon Components (inline, no external deps) ─────────────── */
-function IconArrowLeft({ size = 16, color = DS.muted }) {
+function IconArrowLeft({ size = 16, className = "icon-muted" }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <path d="M19 12H5M12 19l-7-7 7-7" />
     </svg>
   );
 }
 
-function IconCheck({ size = 14, color = DS.success }) {
+function IconCheck({ size = 14, className = "icon-success" }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <polyline points="20 6 9 17 4 12" />
     </svg>
   );
 }
 
-function IconStar({ size = 14, color = DS.accent }) {
+function IconStar({ size = 14, className = "icon-accent" }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
     </svg>
   );
 }
 
-function IconMessage({ size = 20, color = DS.primary }) {
+function IconMessage({ size = 20, className = "icon-primary" }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </svg>
   );
 }
 
-function IconAlert({ size = 20, color = DS.danger }) {
+function IconAlert({ size = 20, className = "icon-danger" }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <circle cx="12" cy="12" r="10" />
       <line x1="12" y1="8" x2="12" y2="12" />
       <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -207,78 +55,33 @@ function IconAlert({ size = 20, color = DS.danger }) {
   );
 }
 
-function IconClose({ size = 16, color = DS.danger }) {
+function IconClose({ size = 16, className = "icon-danger" }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <line x1="18" y1="6" x2="6" y2="18" />
       <line x1="6" y1="6" x2="18" y2="18" />
     </svg>
   );
 }
 
-function IconEmpty({ size = 48, color = DS.muted }) {
+function IconEmpty({ size = 48, className = "icon-muted" }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </svg>
   );
 }
 
 /* ── Avatar Component ───────────────────────────────────────────── */
-function Avatar({ name, size = 34, color = "indigo", style = {} }) {
+function Avatar({ name, size = "md", color = "indigo" }) {
   const initial = name?.charAt(0).toUpperCase() || "?";
-  const colorMap = {
-    indigo: { bg: DS.primary, text: DS.white },
-    cyan: { bg: DS.accent, text: DS.white },
-    green: { bg: DS.success, text: DS.white },
-    amber: { bg: DS.warning, text: DS.white },
-    gray: { bg: "#F1F5F9", text: "#475569" },
-  };
-  const c = colorMap[color] || colorMap.indigo;
-  return (
-    <div
-      style={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: size > 30 ? 12 : 11,
-        fontWeight: 600,
-        fontFamily: DS.fontFamily,
-        background: c.bg,
-        color: c.text,
-        border: "2px solid white",
-        flexShrink: 0,
-        ...style,
-      }}
-    >
-      {initial}
-    </div>
-  );
+  return <div className={`ec-avatar size-${size} color-${color}`}>{initial}</div>;
 }
 
 /* ── Badge Component ────────────────────────────────────────────── */
-function Badge({ children, variant = "indigo", icon = null, style = {} }) {
-  const variantMap = {
-    indigo: { bg: DS.primaryLight, color: DS.primary },
-    cyan: { bg: DS.accentLight, color: "#0E7490" },
-    green: { bg: DS.successLight, color: "#065F46" },
-    amber: { bg: DS.warningLight, color: "#92400E" },
-    red: { bg: DS.dangerLight, color: "#991B1B" },
-    gray: { bg: "#F1F5F9", color: "#475569" },
-  };
-  const v = variantMap[variant] || variantMap.indigo;
+function Badge({ children, variant = "indigo", icon = null, className = "" }) {
   return (
-    <span
-      style={{
-        ...badgeBase,
-        background: v.bg,
-        color: v.color,
-        ...style,
-      }}
-    >
+    <span className={`qdp-badge ${variant} ${className}`}>
       {icon}
       {children}
     </span>
@@ -289,14 +92,8 @@ function Badge({ children, variant = "indigo", icon = null, style = {} }) {
 function SkeletonPulse({ height, width = "100%", marginBottom = 0, borderRadius = 6 }) {
   return (
     <div
-      style={{
-        height,
-        width,
-        borderRadius,
-        background: "#E2E8F0",
-        marginBottom,
-        animation: "ecPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-      }}
+      className="ec-skeleton-block"
+      style={{ height, width, borderRadius, marginBottom }}
     />
   );
 }
@@ -438,36 +235,23 @@ export default function QuestionDetailPage() {
   /* ── Loading State ─────────────────────────────────────────────── */
   if (loading) {
     return (
-      <div
-        style={{
-          maxWidth: 800,
-          margin: "0 auto",
-          padding: `${DS.space10} ${DS.space6}`,
-          fontFamily: DS.fontFamily,
-        }}
-      >
+      <div className="qdp-container">
         {/* Skeleton Question Card */}
-        <div
-          style={{
-            ...cardBase,
-            padding: "28px 24px",
-            marginBottom: DS.space6,
-          }}
-        >
-          <div style={{ display: "flex", gap: 20 }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, minWidth: 48 }}>
+        <div className="qdp-card qdp-skel-card">
+          <div className="qdp-skel-row">
+            <div className="qdp-skel-side">
               <SkeletonPulse height={40} width={40} borderRadius={8} />
               <SkeletonPulse height={16} width={30} borderRadius={4} />
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="qdp-skel-main">
               <SkeletonPulse height={32} width="70%" borderRadius={8} marginBottom={16} />
               <SkeletonPulse height={16} width="100%" borderRadius={4} marginBottom={8} />
               <SkeletonPulse height={16} width="85%" borderRadius={4} marginBottom={8} />
               <SkeletonPulse height={16} width="60%" borderRadius={4} marginBottom={20} />
-              <div style={{ display: "flex", gap: 8, paddingTop: 16, borderTop: `1px solid ${DS.border}` }}>
+              <div className="qdp-skel-footer">
                 <SkeletonPulse height={24} width={80} borderRadius={99} />
                 <SkeletonPulse height={24} width={80} borderRadius={99} />
-                <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+                <div className="qdp-skel-meta">
                   <SkeletonPulse height={28} width={28} borderRadius={99} />
                   <SkeletonPulse height={16} width={100} borderRadius={4} />
                 </div>
@@ -477,20 +261,15 @@ export default function QuestionDetailPage() {
         </div>
 
         {/* Skeleton Answer Card */}
-        <div
-          style={{
-            ...cardBase,
-            padding: "24px",
-          }}
-        >
-          <div style={{ display: "flex", gap: 20 }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, minWidth: 48 }}>
+        <div className="qdp-card">
+          <div className="qdp-skel-row">
+            <div className="qdp-skel-side">
               <SkeletonPulse height={36} width={36} borderRadius={8} />
               <SkeletonPulse height={14} width={28} borderRadius={4} />
             </div>
-            <div style={{ flex: 1 }}>
+            <div className="qdp-skel-main">
               <SkeletonPulse height={80} width="100%" borderRadius={6} marginBottom={12} />
-              <div style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 12, borderTop: `1px solid ${DS.border}` }}>
+              <div className="qdp-skel-footer-answer">
                 <SkeletonPulse height={26} width={26} borderRadius={99} />
                 <SkeletonPulse height={14} width={80} borderRadius={4} />
               </div>
@@ -504,50 +283,17 @@ export default function QuestionDetailPage() {
   /* ── Error State ───────────────────────────────────────────────── */
   if (error || !question) {
     return (
-      <div
-        style={{
-          maxWidth: 800,
-          margin: "0 auto",
-          padding: `${DS.space10} ${DS.space6}`,
-          fontFamily: DS.fontFamily,
-        }}
-      >
-        <div
-          role="alert"
-          style={{
-            background: DS.dangerLight,
-            border: `1px solid rgba(239,68,68,0.25)`,
-            borderRadius: DS.radiusXl,
-            padding: `${DS.space6} ${DS.space8}`,
-            textAlign: "center",
-          }}
-        >
-          <div style={{ marginBottom: 12 }}>
-            <IconAlert size={48} color={DS.danger} />
+      <div className="qdp-container">
+        <div role="alert" className="qdp-error-box">
+          <div className="qdp-error-icon">
+            <IconAlert size={48} className="icon-danger" />
           </div>
-          <p style={{ fontSize: 16, fontWeight: 500, margin: 0, color: DS.danger }}>
-            {error || "Question not found."}
-          </p>
+          <p className="qdp-error-text">{error || "Question not found."}</p>
           <button
             onClick={() => navigate(-1)}
-            style={{
-              marginTop: 16,
-              ...btnGhost,
-              borderColor: "rgba(239,68,68,0.25)",
-              color: DS.danger,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = DS.danger;
-              e.currentTarget.style.color = DS.white;
-              e.currentTarget.style.borderColor = DS.danger;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.color = DS.danger;
-              e.currentTarget.style.borderColor = "rgba(239,68,68,0.25)";
-            }}
+            className="ec-btn-base ec-btn-danger-ghost qdp-error-back-btn"
           >
-            <IconArrowLeft size={16} color="currentColor" />
+            <IconArrowLeft size={16} className="" />
             Go Back
           </button>
         </div>
@@ -565,83 +311,25 @@ export default function QuestionDetailPage() {
   });
 
   return (
-    <div
-      style={{
-        maxWidth: 800,
-        margin: "0 auto",
-        padding: `${DS.space10} ${DS.space6}`,
-        fontFamily: DS.fontFamily,
-        color: DS.text,
-      }}
-    >
+    <div className="qdp-container">
       {/* ── Breadcrumb Navigation ───────────────────────────────── */}
-      <nav style={{ marginBottom: DS.space6 }}>
+      <nav className="qdp-nav">
         <button
           onClick={() => navigate(-1)}
-          style={{
-            ...btnGhost,
-            ...btnSm,
-            gap: "6px",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = DS.primaryLight;
-            e.currentTarget.style.borderColor = DS.primary;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.borderColor = DS.border;
-          }}
+          className="ec-btn-base ec-btn-ghost ec-btn-sm"
         >
-          <IconArrowLeft size={14} color={DS.primary} />
+          <IconArrowLeft size={14} className="icon-primary" />
           Back to Forum
         </button>
       </nav>
 
       {/* ── Question Card ─────────────────────────────────────── */}
-      <article
-        style={{
-          ...cardBase,
-          padding: "28px 24px",
-          marginBottom: DS.space8,
-          boxShadow: DS.shadowMd,
-          display: "flex",
-          gap: 20,
-          position: "relative",
-          overflow: "hidden",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.boxShadow = DS.shadowLg;
-          e.currentTarget.style.transform = "translateY(-1px)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.boxShadow = DS.shadowMd;
-          e.currentTarget.style.transform = "translateY(0)";
-        }}
-      >
+      <article className="qdp-card qdp-question-card">
         {/* Decorative accent line on left */}
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            top: 24,
-            bottom: 24,
-            width: 3,
-            borderRadius: "0 4px 4px 0",
-            background: question.is_resolved ? DS.success : DS.primary,
-          }}
-        />
+        <div className={`qdp-accent-bar ${question.is_resolved ? "resolved" : ""}`} />
 
         {/* Upvote Section */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: DS.space2,
-            minWidth: 48,
-            paddingTop: 4,
-          }}
-        >
+        <div className="qdp-upvote-col">
           <UpvoteButton
             count={question.upvote_count}
             hasUpvoted={question.user_has_upvoted}
@@ -651,104 +339,35 @@ export default function QuestionDetailPage() {
         </div>
 
         {/* Question Content */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="qdp-content">
           {/* Title Row */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "baseline",
-              gap: DS.space3,
-              flexWrap: "wrap",
-              marginBottom: DS.space4,
-            }}
-          >
-            <h1
-              style={{
-                fontSize: 28,
-                margin: 0,
-                fontWeight: 700,
-                lineHeight: 1.3,
-                color: DS.primaryDark,
-                letterSpacing: "-0.02em",
-                fontFamily: DS.fontFamily,
-              }}
-            >
-              {question.title}
-            </h1>
+          <div className="qdp-title-row">
+            <h1 className="qdp-title">{question.title}</h1>
             {question.is_resolved && (
-              <Badge variant="green" icon={<IconCheck size={12} color={DS.success} />}>
+              <Badge variant="green" icon={<IconCheck size={12} className="icon-success" />}>
                 Resolved
               </Badge>
             )}
           </div>
 
           {/* Body */}
-          <div
-            style={{
-              whiteSpace: "pre-wrap",
-              lineHeight: 1.7,
-              fontSize: 15,
-              color: "#374151",
-              marginBottom: DS.space5,
-            }}
-          >
-            {question.body}
-          </div>
+          <div className="qdp-body">{question.body}</div>
 
           {/* Metadata Row */}
-          <div
-            style={{
-              display: "flex",
-              gap: DS.space2,
-              flexWrap: "wrap",
-              alignItems: "center",
-              paddingTop: DS.space4,
-              borderTop: `0.5px solid ${DS.border}`,
-            }}
-          >
+          <div className="qdp-meta-row">
             {/* Tags */}
             {question.tags.map((t) => (
-              <Badge
-                key={t}
-                variant="indigo"
-                style={{
-                  cursor: "default",
-                  transition: DS.transitionBase,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = DS.primary;
-                  e.currentTarget.style.color = DS.white;
-                  e.currentTarget.style.transform = "translateY(-1px)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = DS.primaryLight;
-                  e.currentTarget.style.color = DS.primary;
-                  e.currentTarget.style.transform = "translateY(0)";
-                }}
-              >
+              <Badge key={t} variant="indigo" className="qdp-tag-badge">
                 #{t}
               </Badge>
             ))}
 
             {/* Author & Date */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: DS.space2,
-                marginLeft: "auto",
-              }}
-            >
-              <Avatar name={question.author.username} size={28} color="indigo" />
-              <span
-                style={{
-                  fontSize: 13,
-                  color: DS.muted,
-                  fontFamily: DS.fontFamily,
-                }}
-              >
+            <div className="qdp-author-date">
+              <Avatar name={question.author.username} size="md" color="indigo" />
+              <span className="qdp-author-name">
                 {question.author.username}
-                <span style={{ margin: "0 6px", color: DS.border }}>·</span>
+                <span className="qdp-dot">·</span>
                 {question.created_at
                   ? new Date(question.created_at).toLocaleDateString("en-US", {
                       month: "short",
@@ -764,241 +383,62 @@ export default function QuestionDetailPage() {
 
       {/* ── Action Error Toast ──────────────────────────────────── */}
       {actionError && (
-        <div
-          role="alert"
-          style={{
-            background: DS.dangerLight,
-            border: `1px solid rgba(239,68,68,0.25)`,
-            borderRadius: DS.radiusXl,
-            padding: "14px 20px",
-            marginBottom: DS.space6,
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            animation: "ecSlideIn 0.3s ease-out",
-            boxShadow: DS.shadowMd,
-          }}
-        >
-          <IconAlert size={20} color={DS.danger} />
-          <span
-            style={{
-              color: DS.danger,
-              fontSize: 14,
-              fontWeight: 500,
-              flex: 1,
-              fontFamily: DS.fontFamily,
-            }}
-          >
-            {actionError}
-          </span>
+        <div role="alert" className="qdp-toast">
+          <IconAlert size={20} className="icon-danger" />
+          <span className="qdp-toast-text">{actionError}</span>
           <button
             onClick={() => setActionError(null)}
             aria-label="Dismiss error"
-            style={{
-              background: "none",
-              border: "none",
-              color: DS.danger,
-              cursor: "pointer",
-              padding: 4,
-              borderRadius: DS.radiusSm,
-              display: "flex",
-              alignItems: "center",
-              transition: DS.transitionFast,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(239,68,68,0.1)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "transparent";
-            }}
+            className="qdp-toast-close"
           >
-            <IconClose size={16} color={DS.danger} />
+            <IconClose size={16} className="icon-danger" />
           </button>
         </div>
       )}
 
       {/* ── Answers Section Header ──────────────────────────────── */}
-      <div
-        ref={answersRef}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: DS.space5,
-          paddingBottom: DS.space3,
-          borderBottom: `2px solid ${DS.border}`,
-        }}
-      >
-        <h2
-          style={{
-            fontSize: 22,
-            margin: 0,
-            fontWeight: 700,
-            color: DS.primaryDark,
-            fontFamily: DS.fontFamily,
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <span
-            style={{
-              background: DS.primary,
-              color: DS.white,
-              borderRadius: "50%",
-              width: 32,
-              height: 32,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 14,
-              fontWeight: 700,
-              fontFamily: DS.fontFamily,
-            }}
-          >
-            {sortedAnswers.length}
-          </span>
+      <div ref={answersRef} className="qdp-answers-header">
+        <h2 className="qdp-answers-title">
+          <span className="qdp-answers-count">{sortedAnswers.length}</span>
           {sortedAnswers.length === 1 ? "Answer" : "Answers"}
         </h2>
 
-        <span
-          style={{
-            fontSize: 12,
-            color: DS.muted,
-            fontFamily: DS.fontFamily,
-            fontWeight: 500,
-          }}
-        >
-          Sorted by relevance
-        </span>
+        <span className="qdp-answers-sort-hint">Sorted by relevance</span>
       </div>
 
       {/* ── Empty State ─────────────────────────────────────────── */}
       {sortedAnswers.length === 0 ? (
-        <div
-          style={{
-            textAlign: "center",
-            padding: `${DS.space8} ${DS.space6}`,
-            background: DS.white,
-            borderRadius: DS.radiusLg,
-            border: `2px dashed ${DS.border}`,
-            marginBottom: DS.space8,
-            transition: DS.transitionSlow,
-            cursor: "default",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = DS.primary;
-            e.currentTarget.style.background = DS.primaryLight;
-            e.currentTarget.style.transform = "translateY(-2px)";
-            e.currentTarget.style.boxShadow = DS.shadowMd;
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = DS.border;
-            e.currentTarget.style.background = DS.white;
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "none";
-          }}
-        >
-          <div style={{ marginBottom: 16, opacity: 0.6 }}>
-            <IconEmpty size={48} color={DS.muted} />
+        <div className="qdp-empty">
+          <div className="qdp-empty-icon">
+            <IconEmpty size={48} className="icon-muted" />
           </div>
-          <p
-            style={{
-              color: DS.muted,
-              fontSize: 16,
-              fontWeight: 500,
-              margin: "0 0 8px 0",
-              fontFamily: DS.fontFamily,
-            }}
-          >
-            No answers yet
-          </p>
-          <p
-            style={{
-              color: DS.muted,
-              fontSize: 14,
-              margin: 0,
-              fontFamily: DS.fontFamily,
-            }}
-          >
+          <p className="qdp-empty-title">No answers yet</p>
+          <p className="qdp-empty-sub">
             Be the first to share your knowledge and help out.
           </p>
         </div>
       ) : (
-        <ul
-          style={{
-            listStyle: "none",
-            padding: 0,
-            margin: `0 0 ${DS.space8} 0`,
-            display: "flex",
-            flexDirection: "column",
-            gap: DS.space4,
-          }}
-        >
+        <ul className="qdp-answers-list">
           {sortedAnswers.map((answer, index) => {
             const isActive = activeAnswerId === answer.id;
-            const borderColor = answer.is_accepted
-              ? DS.success
+            const stateClass = answer.is_accepted
+              ? "accepted"
               : answer.is_endorsed
-              ? DS.accent
-              : DS.border;
-            const bgColor = answer.is_accepted
-              ? DS.successLight
-              : answer.is_endorsed
-              ? DS.accentLight
-              : DS.white;
+              ? "endorsed"
+              : "";
 
             return (
               <li
                 key={answer.id}
-                style={{
-                  ...cardBase,
-                  padding: "24px",
-                  display: "flex",
-                  gap: 20,
-                  borderLeftWidth: 3,
-                  borderLeftColor: borderColor,
-                  borderLeftStyle: "solid",
-                  background: bgColor,
-                  position: "relative",
-                  overflow: "hidden",
-                  transition: DS.transitionSlow,
-                  transform: isActive ? "translateY(-2px)" : "translateY(0)",
-                  boxShadow: isActive ? DS.shadowLg : DS.shadowSm,
-                }}
+                className={`qdp-answer-card ${stateClass} ${isActive ? "active" : ""}`}
                 onMouseEnter={() => setActiveAnswerId(answer.id)}
                 onMouseLeave={() => setActiveAnswerId(null)}
               >
                 {/* Rank number (decorative, faded) */}
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 12,
-                    right: 16,
-                    fontSize: 48,
-                    fontWeight: 800,
-                    color: DS.border,
-                    opacity: 0.3,
-                    lineHeight: 1,
-                    fontFamily: DS.fontMono,
-                    userSelect: "none",
-                    pointerEvents: "none",
-                  }}
-                >
-                  {index + 1}
-                </div>
+                <div className="qdp-answer-rank">{index + 1}</div>
 
                 {/* Upvote Column */}
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: DS.space2,
-                    minWidth: 48,
-                    paddingTop: 4,
-                  }}
-                >
+                <div className="qdp-upvote-col">
                   <UpvoteButton
                     size="sm"
                     count={answer.upvote_count}
@@ -1009,71 +449,34 @@ export default function QuestionDetailPage() {
                 </div>
 
                 {/* Answer Content */}
-                <div style={{ flex: 1, minWidth: 0, position: "relative", zIndex: 1 }}>
+                <div className="qdp-answer-content">
                   {/* Badges Row */}
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: DS.space2,
-                      flexWrap: "wrap",
-                      marginBottom: DS.space3,
-                      alignItems: "center",
-                    }}
-                  >
+                  <div className="qdp-answer-badges">
                     {answer.is_accepted && (
-                      <Badge variant="green" icon={<IconCheck size={12} color={DS.success} />}>
+                      <Badge variant="green" icon={<IconCheck size={12} className="icon-success" />}>
                         Accepted answer
                       </Badge>
                     )}
                     {answer.is_endorsed && (
-                      <Badge variant="cyan" icon={<IconStar size={12} color={DS.accent} />}>
+                      <Badge variant="cyan" icon={<IconStar size={12} className="icon-accent" />}>
                         Expert endorsed
                       </Badge>
                     )}
                   </div>
 
                   {/* Body */}
-                  <p
-                    style={{
-                      whiteSpace: "pre-wrap",
-                      lineHeight: 1.7,
-                      fontSize: 15,
-                      color: "#374151",
-                      margin: "0 0 16px 0",
-                      fontFamily: DS.fontFamily,
-                    }}
-                  >
-                    {answer.body}
-                  </p>
+                  <p className="qdp-answer-body">{answer.body}</p>
 
                   {/* Footer Actions */}
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: DS.space3,
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                      paddingTop: DS.space3,
-                      borderTop: `0.5px solid ${DS.border}`,
-                    }}
-                  >
+                  <div className="qdp-answer-footer">
                     {/* Author */}
-                    <div style={{ display: "flex", alignItems: "center", gap: DS.space2 }}>
+                    <div className="qdp-answer-author">
                       <Avatar
                         name={answer.author.username}
-                        size={26}
+                        size="sm"
                         color={answer.is_accepted ? "green" : answer.is_endorsed ? "cyan" : "gray"}
                       />
-                      <span
-                        style={{
-                          fontSize: 13,
-                          color: DS.muted,
-                          fontFamily: DS.fontFamily,
-                          fontWeight: 500,
-                        }}
-                      >
-                        {answer.author.username}
-                      </span>
+                      <span className="qdp-answer-author-name">{answer.author.username}</span>
                     </div>
 
                     {/* Endorse Button */}
@@ -1081,36 +484,13 @@ export default function QuestionDetailPage() {
                       <button
                         type="button"
                         onClick={() => handleEndorse(answer.id)}
-                        style={
+                        className={
                           answer.is_endorsed
-                            ? {
-                                ...btnSecondary,
-                                ...btnSm,
-                                background: DS.accentLight,
-                                color: DS.accent,
-                                borderColor: DS.accent,
-                              }
-                            : {
-                                ...btnGhost,
-                                ...btnSm,
-                              }
+                            ? "ec-btn-base ec-btn-sm ec-btn-endorsed"
+                            : "ec-btn-base ec-btn-sm ec-btn-ghost ec-btn-endorse"
                         }
-                        onMouseEnter={(e) => {
-                          if (!answer.is_endorsed) {
-                            e.currentTarget.style.background = DS.accentLight;
-                            e.currentTarget.style.borderColor = DS.accent;
-                            e.currentTarget.style.color = DS.accent;
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!answer.is_endorsed) {
-                            e.currentTarget.style.background = "transparent";
-                            e.currentTarget.style.borderColor = DS.border;
-                            e.currentTarget.style.color = DS.primary;
-                          }
-                        }}
                       >
-                        <IconStar size={14} color="currentColor" />
+                        <IconStar size={14} className="" />
                         {answer.is_endorsed ? "Endorsed" : "Endorse"}
                       </button>
                     )}
@@ -1120,22 +500,9 @@ export default function QuestionDetailPage() {
                       <button
                         type="button"
                         onClick={() => handleAccept(answer.id)}
-                        style={{
-                          ...btnGhost,
-                          ...btnSm,
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = DS.successLight;
-                          e.currentTarget.style.borderColor = DS.success;
-                          e.currentTarget.style.color = DS.success;
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = "transparent";
-                          e.currentTarget.style.borderColor = DS.border;
-                          e.currentTarget.style.color = DS.primary;
-                        }}
+                        className="ec-btn-base ec-btn-sm ec-btn-ghost ec-btn-accept"
                       >
-                        <IconCheck size={14} color="currentColor" />
+                        <IconCheck size={14} className="" />
                         Accept answer
                       </button>
                     )}
@@ -1148,26 +515,9 @@ export default function QuestionDetailPage() {
       )}
 
       {/* ── Answer Form Card ────────────────────────────────────── */}
-      <div
-        style={{
-          ...cardBase,
-          padding: "28px 24px",
-          boxShadow: DS.shadowMd,
-        }}
-      >
-        <h3
-          style={{
-            fontSize: 18,
-            fontWeight: 700,
-            margin: `0 0 ${DS.space5} 0`,
-            color: DS.primaryDark,
-            fontFamily: DS.fontFamily,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          <IconMessage size={20} color={DS.primary} />
+      <div className="qdp-card qdp-answer-form-card">
+        <h3 className="qdp-answer-form-title">
+          <IconMessage size={20} className="icon-primary" />
           Your Answer
         </h3>
         <AnswerSubmissionForm questionId={question.id} onPosted={handleAnswerPosted} />
@@ -1175,4 +525,3 @@ export default function QuestionDetailPage() {
     </div>
   );
 }
-

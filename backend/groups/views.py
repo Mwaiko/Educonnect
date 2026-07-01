@@ -159,6 +159,36 @@ class MeetingLinkCreateView(APIView):
         return f"https://meet.example.com/{unique_code}"
 
 
+class MeetingLinkDeleteView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk, meeting_pk):
+        try:
+            group = StudyGroup.objects.get(pk=pk)
+        except StudyGroup.DoesNotExist:
+            return Response(
+                {'error': {'code': 'not_found', 'message': 'Study group not found.'}},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if not Membership.objects.filter(group=group, user=request.user).exists():
+            return Response(
+                {'error': {'code': 'not_member', 'message': 'You must be a member to manage meeting links.'}},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        try:
+            meeting = MeetingLink.objects.get(pk=meeting_pk, group=group)
+        except MeetingLink.DoesNotExist:
+            return Response(
+                {'error': {'code': 'not_found', 'message': 'Meeting link not found.'}},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        meeting.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class StudyGroupMatchView(APIView):
     permission_classes = [IsAuthenticated]
 

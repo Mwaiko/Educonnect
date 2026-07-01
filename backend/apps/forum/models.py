@@ -1,21 +1,8 @@
 import uuid
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
-
-
-class Tag(models.Model):
-    """forum_tag — subject/topic tags applied to questions and resources."""
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=80, unique=True)
-
-    class Meta:
-        db_table = "forum_tag"
-        ordering = ["name"]
-
-    def __str__(self):
-        return self.name
 
 
 class Question(models.Model):
@@ -30,7 +17,7 @@ class Question(models.Model):
     title = models.CharField(max_length=255)
     body = models.TextField()
     tags = models.ManyToManyField(
-        Tag, through="QuestionTag", related_name="questions", blank=True
+        "tags.Tag", through="QuestionTag", related_name="questions", blank=True
     )
     is_resolved = models.BooleanField(default=False)
     upvote_count = models.IntegerField(default=0)
@@ -55,10 +42,19 @@ class Question(models.Model):
 
 
 class QuestionTag(models.Model):
-    """forum_question_tags — junction table between questions and tags."""
+    """forum_question_tags — junction table between questions and tags.
+
+    Only leaf-level (Tag.Level.TAG) tags should ever be attached to a
+    question. This is enforced primarily by QuestionCreateSerializer, whose
+    `tags` field's queryset is restricted to level=TAG — that is the real
+    source of truth. `clean()` below is defense-in-depth only: M2M
+    `.set()`/`.add()` build QuestionTag rows without calling `save()`, so
+    this validation won't fire on that path. Treat it as a safety net for
+    direct ORM/admin usage, not a guarantee.
+    """
 
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
-    tag = models.ForeignKey(Tag, on_delete=models.CASCADE)
+    tag = models.ForeignKey("tags.Tag", on_delete=models.CASCADE)
 
     class Meta:
         db_table = "forum_question_tags"
@@ -67,6 +63,14 @@ class QuestionTag(models.Model):
                 fields=["question", "tag"], name="unique_question_tag"
             )
         ]
+
+    def clean(self):
+        from tags.models import Tag
+
+        if self.tag_id and self.tag.level != Tag.Level.TAG:
+            raise ValidationError(
+                "Questions can only be tagged with leaf-level tags."
+            )
 
 
 class Answer(models.Model):

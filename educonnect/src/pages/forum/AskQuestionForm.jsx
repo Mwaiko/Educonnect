@@ -78,57 +78,21 @@ export default function AskQuestionForm() {
       if (apiErrors && typeof apiErrors === "object") {
         setErrors(apiErrors);
       } else {
-        setSubmitError("Couldn\'t post your question. Please try again.");
+        setSubmitError("Couldn't post your question. Please try again.");
       }
     } finally {
       setSubmitting(false);
     }
   };
 
-  /* ── EduConnect design tokens ── */
-  const primary = "#4F46E5";
-  const primaryLight = "#EEF2FF";
-  const primaryDark = "#312E81";
-  const accent = "#06B6D4";
-  const danger = "#EF4444";
-  const text = "#1E1B4B";
-  const muted = "#6B7280";
-  const border = "rgba(79,70,229,0.18)";
-  const surface = "#F8FAFC";
-  const white = "#FFFFFF";
-
-  const font = "'Inter', 'Anthropic Sans', system-ui, sans-serif";
-
   return (
-    <div
-      style={{
-        maxWidth: 720,
-        margin: "0 auto",
-        padding: "40px 20px",
-        fontFamily: font,
-        color: text,
-      }}
-    >
+    <div className="form-container">
       {/* Header */}
-      <div style={{ marginBottom: 28 }}>
-        <h1
-          style={{
-            fontSize: 28,
-            fontWeight: 600,
-            color: primaryDark,
-            marginBottom: 6,
-            letterSpacing: "-0.3px",
-          }}
-        >
-          Ask a question
-        </h1>
-        <p style={{ fontSize: 14, color: muted, lineHeight: 1.5 }}>
-          Be specific — a clear title and details help solvers respond faster.
-          {" "}
-          <a
-            href="#"
-            style={{ color: primary, textDecoration: "none", fontWeight: 500 }}
-          >
+      <div className="form-header">
+        <h1 className="form-title">Ask a question</h1>
+        <p className="form-subtitle">
+          Be specific — a clear title and details help solvers respond faster.{" "}
+          <a href="#" className="form-link">
             How to ask a good question
           </a>
         </p>
@@ -136,46 +100,18 @@ export default function AskQuestionForm() {
 
       {/* Global error */}
       {submitError && (
-        <div
-          role="alert"
-          style={{
-            marginBottom: 20,
-            padding: "12px 14px",
-            background: "#FEF2F2",
-            border: "1px solid rgba(239,68,68,0.25)",
-            borderRadius: 8,
-            color: danger,
-            fontSize: 13,
-            fontWeight: 500,
-          }}
-        >
+        <div role="alert" className="form-alert-error">
           {submitError}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{ display: "grid", gap: 24 }}>
+      <form onSubmit={handleSubmit} className="form-grid">
         {/* ── Title ── */}
-        <div
-          style={{
-            background: white,
-            border: `0.5px solid ${border}`,
-            borderRadius: 12,
-            padding: "20px 22px",
-          }}
-        >
-          <label
-            htmlFor="question-title"
-            style={{
-              display: "block",
-              fontSize: 13,
-              fontWeight: 600,
-              color: text,
-              marginBottom: 6,
-            }}
-          >
+        <div className="form-card">
+          <label htmlFor="question-title" className="form-label">
             Title
           </label>
-          <p style={{ fontSize: 12, color: muted, marginBottom: 10 }}>
+          <p className="form-hint">
             Summarize your problem in one sentence. Start with “How”, “What”,
             or “Why”.
           </p>
@@ -188,219 +124,70 @@ export default function AskQuestionForm() {
             maxLength={MAX_TITLE}
             aria-invalid={Boolean(errors.title)}
             aria-describedby={errors.title ? "title-error" : undefined}
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              border: `1px solid ${errors.title ? danger : border}`,
-              borderRadius: 8,
-              background: white,
-              color: text,
-              fontSize: 15,
-              fontFamily: font,
-              outline: "none",
-              transition: "border-color 0.15s, box-shadow 0.15s",
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = primary;
-              e.target.style.boxShadow = "0 0 0 3px rgba(79,70,229,0.12)";
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = errors.title ? danger : border;
-              e.target.style.boxShadow = "none";
-            }}
+            className={`ec-input ${errors.title ? "error" : ""}`}
           />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginTop: 6,
-            }}
-          >
+          <div className="form-field-footer">
             {errors.title ? (
-              <span
-                id="title-error"
-                role="alert"
-                style={{ fontSize: 12, color: danger, fontWeight: 500 }}
-              >
+              <span id="title-error" role="alert" className="form-error-text">
                 {Array.isArray(errors.title) ? errors.title[0] : errors.title}
               </span>
             ) : (
               <span />
             )}
-            <span
-              style={{
-                fontSize: 11,
-                color: muted,
-                fontFamily: "monospace",
-              }}
-            >
+            <span className="form-char-count">
               {title.length}/{MAX_TITLE}
             </span>
           </div>
         </div>
 
         {/* ── Body ── */}
-        <div
-          style={{
-            background: white,
-            border: `0.5px solid ${border}`,
-            borderRadius: 12,
-            padding: "20px 22px",
-          }}
-        >
-          <label
-            htmlFor="question-body"
-            style={{
-              display: "block",
-              fontSize: 13,
-              fontWeight: 600,
-              color: text,
-              marginBottom: 6,
-            }}
-          >
+        <div className="form-card">
+          <label htmlFor="question-body" className="form-label">
             What are the details of your problem?
           </label>
-          <p style={{ fontSize: 12, color: muted, marginBottom: 10 }}>
-            Explain what you\'ve tried, what you expected, and where it goes
+          <p className="form-hint">
+            Explain what you've tried, what you expected, and where it goes
             wrong. Include code snippets if relevant.
           </p>
           <textarea
             id="question-body"
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="I\'m working on a graph problem where..."
+            placeholder="I'm working on a graph problem where..."
             rows={10}
             aria-invalid={Boolean(errors.body)}
             aria-describedby={errors.body ? "body-error" : undefined}
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              border: `1px solid ${errors.body ? danger : border}`,
-              borderRadius: 8,
-              background: white,
-              color: text,
-              fontSize: 14,
-              fontFamily: font,
-              lineHeight: 1.6,
-              resize: "vertical",
-              outline: "none",
-              transition: "border-color 0.15s, box-shadow 0.15s",
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = primary;
-              e.target.style.boxShadow = "0 0 0 3px rgba(79,70,229,0.12)";
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = errors.body ? danger : border;
-              e.target.style.boxShadow = "none";
-            }}
+            className={`ec-input ${errors.body ? "error" : ""}`}
           />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginTop: 6,
-            }}
-          >
+          <div className="form-field-footer">
             {errors.body ? (
-              <span
-                id="body-error"
-                role="alert"
-                style={{ fontSize: 12, color: danger, fontWeight: 500 }}
-              >
+              <span id="body-error" role="alert" className="form-error-text">
                 {Array.isArray(errors.body) ? errors.body[0] : errors.body}
               </span>
             ) : (
               <span />
             )}
-            <span
-              style={{
-                fontSize: 11,
-                color: muted,
-                fontFamily: "monospace",
-              }}
-            >
-              {body.length} chars
-            </span>
+            <span className="form-char-count">{body.length} chars</span>
           </div>
         </div>
 
         {/* ── Tags ── */}
-        <div
-          style={{
-            background: white,
-            border: `0.5px solid ${border}`,
-            borderRadius: 12,
-            padding: "20px 22px",
-          }}
-        >
-          <label
-            htmlFor="question-tags"
-            style={{
-              display: "block",
-              fontSize: 13,
-              fontWeight: 600,
-              color: text,
-              marginBottom: 6,
-            }}
-          >
+        <div className="form-card">
+          <label htmlFor="question-tags" className="form-label">
             Tags
           </label>
-          <p style={{ fontSize: 12, color: muted, marginBottom: 10 }}>
+          <p className="form-hint">
             Add up to 5 tags to describe what your question is about.
           </p>
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 8,
-              alignItems: "center",
-              padding: "8px 10px",
-              border: `1px solid ${errors.tags ? danger : border}`,
-              borderRadius: 8,
-              background: white,
-              transition: "border-color 0.15s, box-shadow 0.15s",
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = primary;
-              e.currentTarget.style.boxShadow =
-                "0 0 0 3px rgba(79,70,229,0.12)";
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = errors.tags ? danger : border;
-              e.currentTarget.style.boxShadow = "none";
-            }}
-          >
+          <div className={`tag-container ${errors.tags ? "error" : ""}`}>
             {tags.map((t) => (
-              <span
-                key={t}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  fontSize: 12,
-                  fontWeight: 500,
-                  background: primaryLight,
-                  color: primary,
-                  borderRadius: 99,
-                  padding: "4px 12px",
-                }}
-              >
+              <span key={t} className="tag-chip">
                 {t}
                 <button
                   type="button"
                   onClick={() => removeTag(t)}
                   aria-label={`Remove tag ${t}`}
-                  style={{
-                    border: "none",
-                    background: "none",
-                    cursor: "pointer",
-                    color: primary,
-                    fontSize: 14,
-                    lineHeight: 1,
-                    padding: 0,
-                    fontWeight: 600,
-                  }}
+                  className="tag-remove-btn"
                 >
                   ×
                 </button>
@@ -419,98 +206,35 @@ export default function AskQuestionForm() {
                     ? "e.g. algorithms, graphs..."
                     : "add another"
                 }
-                style={{
-                  border: "none",
-                  outline: "none",
-                  background: "transparent",
-                  flex: "1 1 120px",
-                  minWidth: 100,
-                  color: text,
-                  fontSize: 14,
-                  fontFamily: font,
-                  padding: "4px 2px",
-                }}
+                className="tag-input"
               />
             )}
           </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginTop: 6,
-            }}
-          >
+          <div className="form-field-footer">
             {errors.tags ? (
-              <span
-                id="tags-error"
-                role="alert"
-                style={{ fontSize: 12, color: danger, fontWeight: 500 }}
-              >
+              <span id="tags-error" role="alert" className="form-error-text">
                 {Array.isArray(errors.tags) ? errors.tags[0] : errors.tags}
               </span>
             ) : (
               <span />
             )}
-            <span
-              style={{
-                fontSize: 11,
-                color: muted,
-                fontFamily: "monospace",
-              }}
-            >
-              {tags.length}/5 tags
-            </span>
+            <span className="form-char-count">{tags.length}/5 tags</span>
           </div>
         </div>
 
         {/* ── Submit ── */}
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <div className="form-actions">
           <button
             type="submit"
             disabled={submitting}
-            style={{
-              padding: "11px 28px",
-              background: primary,
-              color: "#fff",
-              border: "none",
-              borderRadius: 8,
-              fontSize: 14,
-              fontWeight: 600,
-              fontFamily: font,
-              cursor: submitting ? "wait" : "pointer",
-              opacity: submitting ? 0.7 : 1,
-              transition: "opacity 0.15s",
-            }}
-            onMouseEnter={(e) => {
-              if (!submitting) e.target.style.opacity = 0.88;
-            }}
-            onMouseLeave={(e) => {
-              if (!submitting) e.target.style.opacity = 1;
-            }}
+            className="ec-btn-base ec-btn-primary"
           >
             {submitting ? "Posting…" : "Post your question"}
           </button>
           <button
             type="button"
             onClick={() => navigate(-1)}
-            style={{
-              padding: "11px 20px",
-              background: "transparent",
-              color: primary,
-              border: `1px solid ${border}`,
-              borderRadius: 8,
-              fontSize: 14,
-              fontWeight: 500,
-              fontFamily: font,
-              cursor: "pointer",
-              transition: "background 0.15s",
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.background = primaryLight;
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = "transparent";
-            }}
+            className="ec-btn-base ec-btn-ghost"
           >
             Discard
           </button>

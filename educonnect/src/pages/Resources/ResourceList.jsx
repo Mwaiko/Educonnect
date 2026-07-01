@@ -1,167 +1,7 @@
 import { useState, useEffect } from 'react';
-import styled, { createGlobalStyle } from 'styled-components';
 import { getResources, voteResource, deleteResource } from '../../api/resources';
 import { useTheme } from '../../context/ThemeContext';
-
-const GlobalStyle = createGlobalStyle`
-  /* Inter font is loaded via a <link> tag below instead of @import — styled-components'
-     createGlobalStyle can't reliably process @import at runtime (see console warning). */
-  /* Scoped reset only — this component renders inside the main dashboard shell (which
-     controls its own light/dark background via ThemeContext), so we never touch body styles here. */
-  .resource-list-page, .resource-list-page *, .resource-list-page *::before, .resource-list-page *::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: 'Inter', system-ui, sans-serif;
-  }
-`;
-
-const Page = styled.div`
-  padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
-  background: ${({ $c }) => $c.surface};
-  color: ${({ $c }) => $c.text};
-  border-radius: 16px;
-`;
-const TopBar = styled.div`
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;
-`;
-const TitleGroup = styled.div`display: flex; flex-direction: column; gap: 4px;`;
-const PageTitle = styled.h1`
-  font-size: 22px; font-weight: 600;
-  color: ${({ $c }) => $c.text};
-`;
-const PageSub = styled.p`
-  font-size: 13px;
-  color: ${({ $c }) => $c.textSecondary};
-`;
-const AddBtn = styled.button`
-  display: inline-flex; align-items: center; gap: 7px;
-  background: ${({ $c }) => $c.primary};
-  color: ${({ $c }) => $c.white};
-  border: none;
-  padding: 9px 18px; border-radius: 8px;
-  font-size: 14px; font-weight: 500; font-family: 'Inter', system-ui, sans-serif;
-  cursor: pointer; transition: opacity 0.15s;
-  &:hover { opacity: 0.88; }
-`;
-const FilterBar = styled.div`
-  display: flex; gap: 10px; margin-bottom: 1.5rem; flex-wrap: wrap;
-`;
-const SearchInput = styled.input`
-  flex: 1; min-width: 220px; padding: 9px 14px;
-  border: 1px solid ${({ $c }) => $c.border};
-  border-radius: 8px;
-  font-size: 14px; font-family: 'Inter', system-ui, sans-serif;
-  background: ${({ $c }) => $c.inputBg};
-  color: ${({ $c }) => $c.text};
-  outline: none;
-  &:focus {
-    border-color: ${({ $c }) => $c.primary};
-    box-shadow: 0 0 0 3px ${({ $c }) => $c.primaryLight};
-  }
-  &::placeholder { color: ${({ $c }) => $c.textSecondary}; }
-`;
-const Select = styled.select`
-  padding: 9px 14px; border: 1px solid ${({ $c }) => $c.border};
-  border-radius: 8px; font-size: 14px;
-  font-family: 'Inter', system-ui, sans-serif;
-  background: ${({ $c }) => $c.inputBg};
-  color: ${({ $c }) => $c.text};
-  outline: none; cursor: pointer;
-  &:focus { border-color: ${({ $c }) => $c.primary}; }
-`;
-const ResultCount = styled.p`
-  font-size: 12px; font-weight: 500; letter-spacing: 0.07em;
-  text-transform: uppercase;
-  color: ${({ $c }) => $c.textSecondary};
-  margin-bottom: 1rem;
-`;
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
-`;
-const Card = styled.div`
-  background: ${({ $c }) => $c.surfaceElevated};
-  border: 0.5px solid ${({ $c }) => $c.border};
-  border-top: 3px solid ${({ $c }) => $c.primary};
-  border-radius: 12px;
-  padding: 16px; display: flex; flex-direction: column; gap: 10px;
-  &:hover { box-shadow: ${({ $c }) => $c.hoverShadow}; }
-`;
-const CardTitle = styled.a`
-  font-size: 15px; font-weight: 500;
-  color: ${({ $c }) => $c.text};
-  text-decoration: none; line-height: 1.4;
-  &:hover { color: ${({ $c }) => $c.primary}; }
-`;
-const CardMeta = styled.div`display: flex; gap: 6px; align-items: center; flex-wrap: wrap;`;
-const Badge = styled.span`
-  padding: 3px 10px; border-radius: 99px;
-  font-size: 12px; font-weight: 500;
-  background: ${({ $c }) => $c.primaryLight};
-  color: ${({ $c }) => $c.primary};
-`;
-const TypeBadge = styled(Badge)`
-  background: ${({ $c }) => $c.accentLight};
-  color: ${({ $c }) => $c.accent};
-`;
-const Submitter = styled.p`
-  font-size: 12px;
-  color: ${({ $c }) => $c.textSecondary};
-  margin-top: auto;
-`;
-const CardFooter = styled.div`
-  display: flex; align-items: center; justify-content: space-between;
-  padding-top: 10px; border-top: 0.5px solid ${({ $c }) => $c.border};
-`;
-const VoteRow = styled.div`display: flex; align-items: center; gap: 6px;`;
-const VoteBtn = styled.button`
-  width: 30px; height: 30px; border-radius: 6px;
-  border: 1px solid ${({ $c }) => $c.border};
-  background: ${({ $active, $c }) => $active ? $c.primary : $c.surfaceElevated};
-  color: ${({ $active, $c }) => $active ? $c.white : $c.primary};
-  font-size: 13px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  &:hover { background: ${({ $c }) => $c.primary}; color: ${({ $c }) => $c.white}; }
-`;
-const VoteCount = styled.span`
-  font-size: 14px; font-weight: 600;
-  color: ${({ $c }) => $c.text};
-  min-width: 24px; text-align: center;
-`;
-const DeleteBtn = styled.button`
-  display: inline-flex; align-items: center; gap: 4px;
-  background: ${({ $c }) => $c.dangerLight};
-  color: ${({ $c }) => $c.danger};
-  border: 1px solid ${({ $c }) => $c.danger};
-  font-size: 12px; font-weight: 500;
-  font-family: 'Inter', system-ui, sans-serif;
-  cursor: pointer; padding: 5px 10px; border-radius: 6px;
-  &:hover { opacity: 0.8; }
-`;
-const EmptyState = styled.div`
-  text-align: center; padding: 4rem 2rem;
-  background: ${({ $c }) => $c.surfaceElevated};
-  border: 0.5px solid ${({ $c }) => $c.border};
-  border-radius: 12px;
-`;
-const Loading = styled.div`
-  text-align: center; padding: 4rem;
-  color: ${({ $c }) => $c.textSecondary};
-  font-size: 14px;
-`;
-const Spinner = styled.div`
-  width: 28px; height: 28px;
-  border: 3px solid ${({ $c }) => $c.primaryLight};
-  border-top-color: ${({ $c }) => $c.primary};
-  border-radius: 50%; animation: spin 0.7s linear infinite;
-  margin: 0 auto 1rem;
-  @keyframes spin { to { transform: rotate(360deg); } }
-`;
+import './resources.css';
 
 export default function ResourceList({ onAdd }) {
   const { C } = useTheme();
@@ -171,6 +11,24 @@ export default function ResourceList({ onAdd }) {
   const [search, setSearch] = useState('');
   const [tag, setTag] = useState('');
   const [resourceType, setResourceType] = useState('');
+
+  // Map dynamic theme variables to CSS custom properties
+  const themeStyles = {
+    '--c-surface': C.surface,
+    '--c-text': C.text,
+    '--c-textSecondary': C.textSecondary,
+    '--c-primary': C.primary,
+    '--c-white': C.white,
+    '--c-border': C.border,
+    '--c-inputBg': C.inputBg,
+    '--c-primaryLight': C.primaryLight,
+    '--c-hoverShadow': C.hoverShadow,
+    '--c-accentLight': C.accentLight,
+    '--c-accent': C.accent,
+    '--c-surfaceElevated': C.surfaceElevated,
+    '--c-dangerLight': C.dangerLight,
+    '--c-danger': C.danger,
+  };
 
   const fetchResources = async () => {
     setLoading(true);
@@ -230,86 +88,94 @@ export default function ResourceList({ onAdd }) {
   };
 
   return (
-    <>
-      <GlobalStyle />
-      <link
-        rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
-      />
-      <Page $c={C} className="resource-list-page">
-        <TopBar>
-          <TitleGroup>
-            <PageTitle $c={C}>Resource Repository</PageTitle>
-            <PageSub $c={C}>Community-ranked study materials, textbooks and articles</PageSub>
-          </TitleGroup>
-          <AddBtn $c={C} onClick={onAdd}>+ Add Resource</AddBtn>
-        </TopBar>
-        <FilterBar>
-          <SearchInput
-            $c={C}
-            placeholder="Search by title or subject..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-          <Select $c={C} value={tag} onChange={e => setTag(e.target.value)}>
-            <option value="">All subjects</option>
-            <option value="algorithms">Algorithms</option>
-            <option value="mathematics">Mathematics</option>
-            <option value="data-structures">Data Structures</option>
-            <option value="databases">Databases</option>
-            <option value="networks">Networks</option>
-          </Select>
-          <Select $c={C} value={resourceType} onChange={e => setResourceType(e.target.value)}>
-            <option value="">All types</option>
-            <option value="textbook">Textbook</option>
-            <option value="article">Article</option>
-            <option value="video">Video</option>
-            <option value="website">Website</option>
-            <option value="other">Other</option>
-          </Select>
-        </FilterBar>
-        {loading ? (
-          <Loading $c={C}><Spinner $c={C} />Loading resources...</Loading>
-        ) : error ? (
-          <EmptyState $c={C}>
-            <p style={{ fontSize: '15px', fontWeight: '500', color: C.text, marginBottom: '6px' }}>{error}</p>
-          </EmptyState>
-        ) : resources.length === 0 ? (
-          <EmptyState $c={C}>
-            <p style={{ fontSize: '15px', fontWeight: '500', color: C.text, marginBottom: '6px' }}>No resources found</p>
-            <p style={{ fontSize: '13px', color: C.textSecondary, marginBottom: '1.25rem' }}>Be the first to add a study resource.</p>
-            <AddBtn $c={C} onClick={onAdd} style={{ margin: '0 auto' }}>+ Add Resource</AddBtn>
-          </EmptyState>
-        ) : (
-          <>
-            <ResultCount $c={C}>{resources.length} resource{resources.length !== 1 ? 's' : ''} found</ResultCount>
-            <Grid>
-              {resources.map(resource => (
-                <Card $c={C} key={resource.id}>
-                  <CardTitle $c={C} href={resource.url} target="_blank" rel="noopener noreferrer">
-                    {resource.title}
-                  </CardTitle>
-                  <CardMeta>
-                    {resource.tag && <Badge $c={C}>{resource.tag}</Badge>}
-                    {resource.resource_type && <TypeBadge $c={C}>{resource.resource_type}</TypeBadge>}
-                  </CardMeta>
-                  {resource.submitted_by && (
-                    <Submitter $c={C}>Submitted by {resource.submitted_by.username}</Submitter>
-                  )}
-                  <CardFooter $c={C}>
-                    <VoteRow>
-                      <VoteBtn $c={C} $active={resource.user_vote === 1} onClick={() => handleVote(resource.id, 1)}>▲</VoteBtn>
-                      <VoteCount $c={C}>{resource.net_votes}</VoteCount>
-                      <VoteBtn $c={C} $active={resource.user_vote === -1} onClick={() => handleVote(resource.id, -1)}>▼</VoteBtn>
-                    </VoteRow>
-                    <DeleteBtn $c={C} onClick={() => handleDelete(resource.id)}>Delete</DeleteBtn>
-                  </CardFooter>
-                </Card>
-              ))}
-            </Grid>
-          </>
-        )}
-      </Page>
-    </>
+    <div style={themeStyles} className="resource-list-page">
+      <div className="res-top-bar">
+        <div className="res-title-group">
+          <h1 className="res-page-title">Resource Repository</h1>
+          <p className="res-page-sub">Community-ranked study materials, textbooks and articles</p>
+        </div>
+        <button className="res-add-btn" onClick={onAdd}>+ Add Resource</button>
+      </div>
+
+      <div className="res-filter-bar">
+        <input
+          className="res-search-input"
+          placeholder="Search by title or subject..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        <select className="res-select" value={tag} onChange={e => setTag(e.target.value)}>
+          <option value="">All subjects</option>
+          <option value="algorithms">Algorithms</option>
+          <option value="mathematics">Mathematics</option>
+          <option value="data-structures">Data Structures</option>
+          <option value="databases">Databases</option>
+          <option value="networks">Networks</option>
+        </select>
+        <select className="res-select" value={resourceType} onChange={e => setResourceType(e.target.value)}>
+          <option value="">All types</option>
+          <option value="textbook">Textbook</option>
+          <option value="article">Article</option>
+          <option value="video">Video</option>
+          <option value="website">Website</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+
+      {loading ? (
+        <div className="res-loading">
+          <div className="res-spinner" />
+          Loading resources...
+        </div>
+      ) : error ? (
+        <div className="res-empty-state">
+          <p style={{ fontSize: '15px', fontWeight: '500', color: 'var(--c-text)', marginBottom: '6px' }}>{error}</p>
+        </div>
+      ) : resources.length === 0 ? (
+        <div className="res-empty-state">
+          <p style={{ fontSize: '15px', fontWeight: '500', color: 'var(--c-text)', marginBottom: '6px' }}>No resources found</p>
+          <p style={{ fontSize: '13px', color: 'var(--c-textSecondary)', marginBottom: '1.25rem' }}>Be the first to add a study resource.</p>
+          <button className="res-add-btn" onClick={onAdd} style={{ margin: '0 auto' }}>+ Add Resource</button>
+        </div>
+      ) : (
+        <>
+          <p className="res-result-count">{resources.length} resource{resources.length !== 1 ? 's' : ''} found</p>
+          <div className="res-grid">
+            {resources.map(resource => (
+              <div className="res-card" key={resource.id}>
+                <a className="res-card-title" href={resource.url} target="_blank" rel="noopener noreferrer">
+                  {resource.title}
+                </a>
+                <div className="res-card-meta">
+                  {resource.tag && <span className="res-badge">{resource.tag}</span>}
+                  {resource.resource_type && <span className="res-type-badge">{resource.resource_type}</span>}
+                </div>
+                {resource.submitted_by && (
+                  <p className="res-submitter">Submitted by {resource.submitted_by.username}</p>
+                )}
+                <div className="res-card-footer">
+                  <div className="res-vote-row">
+                    <button 
+                      className={`res-vote-btn ${resource.user_vote === 1 ? 'active' : ''}`} 
+                      onClick={() => handleVote(resource.id, 1)}
+                    >
+                      ▲
+                    </button>
+                    <span className="res-vote-count">{resource.net_votes}</span>
+                    <button 
+                      className={`res-vote-btn ${resource.user_vote === -1 ? 'active' : ''}`} 
+                      onClick={() => handleVote(resource.id, -1)}
+                    >
+                      ▼
+                    </button>
+                  </div>
+                  <button className="res-delete-btn" onClick={() => handleDelete(resource.id)}>Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }

@@ -1,8 +1,8 @@
-import datetime
 import logging
-
 from django.conf import settings
-from django.utils import timezone as dj_timezone
+from google.apps import meet_v2
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
 
 from .base import BaseMeetingService, MeetingProviderError
 
@@ -12,54 +12,40 @@ logger = logging.getLogger(__name__)
 class GoogleMeetService(BaseMeetingService):
     provider_key = 'google_meet'
 
-    def create_meeting(self, group, scheduled_at, user):
-        from googleapiclient.discovery import build
-
+    def create_meeting(self, group, scheduled_at, user) -> str:
+        """
+        Creates a direct Google Meet space using the native Google Meet REST API (v2).
+        """
+        # Fetch valid, auto-refreshed credentials
         creds = self._get_credentials(user)
-        service = build('calendar', 'v3', credentials=creds)
-
-        start_time = scheduled_at or dj_timezone.now()
-        end_time = start_time + datetime.timedelta(hours=1)
-
-        attendees = self._get_attendees(group)
-
-        event_body = {
-            'summary': f"{group.name} Study Session",
-            'start': {'dateTime': start_time.isoformat()},
-            'end': {'dateTime': end_time.isoformat()},
-            'attendees': attendees,
-            'conferenceData': {
-                'createRequest': {
-                    'requestId': f"group-{group.id}-{int(start_time.timestamp())}",
-                    'conferenceSolutionKey': {'type': 'hangoutsMeet'},
-                }
-            },
-        }
 
         try:
-            event = service.events().insert(
-                calendarId='primary',
-                body=event_body,
-                conferenceDataVersion=1,
-                sendUpdates='all',
-            ).execute()
-        except Exception:
-            logger.exception("Google Meet creation failed for group_id=%s", group.id)
-            raise MeetingProviderError("Google Meet creation failed.")
+            # Initialize the modern Spaces Service Client
+            client = meet_v2.SpacesServiceClient(credentials=creds)
+            
+            # Formulate the request structure for a new meeting room
+            request = meet_v2.CreateSpaceRequest(
+                space=meet_v2.Space()
+            )
+            
+            # Execute the API call
+            response = client.create_space(request=request)
 
-        return event['hangoutLink']
+            # Return the direct meeting URL (e.g., https://meet.google.com/abc-defg-hij)
+            return response.meeting_uri
 
-    def _get_attendees(self, group):
-        from .models import Membership  # adjust import path to your app
+        except Exception as e:
+            logger.exception(
+                "Google Meet REST API space creation failed for group_id=%s. Details: %s", 
+                group.id, str(e)
+            )
+            raise MeetingProviderError("Google Meet space creation failed.")
 
-        members = Membership.objects.filter(group=group).select_related('user')
-        return [{'email': m.user.email} for m in members if m.user.email]
-
-    def _get_credentials(self, user):
-        from google.auth.transport.requests import Request
-        from google.oauth2.credentials import Credentials
-
-        token_obj = user.google_oauth_token  # <- adjust to your actual relation/model
+    def _get_credentials(self, user) -> Credentials:
+        """
+        Retrieves, validates, and automatically refreshes the user's Google OAuth tokens.
+        """
+        token_obj = user.google_oauth_token
 
         creds = Credentials(
             token=token_obj.access_token,
@@ -72,14 +58,11 @@ class GoogleMeetService(BaseMeetingService):
         if creds.expired and creds.refresh_token:
             try:
                 creds.refresh(Request())
+                # Update and persist the new access token immediately
+                token_obj.access_token = creds.token
+                token_obj.save(update_fields=['access_token'])
             except Exception:
-                logger.exception(
-                    "Failed to refresh Google credentials for user_id=%s", user.id
-                )
-                raise MeetingProviderError(
-                    "Your Google account needs to be reconnected."
-                )
-            token_obj.access_token = creds.token
-            token_obj.save(update_fields=['access_token'])
+                logger.exception("Failed to refresh Google credentials for user_id=%s", user.id)
+                raise MeetingProviderError("Your Google account credentials have expired. Please reconnect.")
 
         return creds

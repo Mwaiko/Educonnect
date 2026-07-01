@@ -1,168 +1,23 @@
 import { useState, useEffect } from 'react';
-import styled, { createGlobalStyle } from 'styled-components';
 import { getGroups, joinGroup, getMatchedGroups } from '../../api/groups';
 import { useTheme } from '../../context/ThemeContext';
 import GroupForm from './GroupForm';
+import './group.css';
 
-const GlobalStyle = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-`;
-
-const Page = styled.div`
-  padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
-  font-family: 'Inter', system-ui, sans-serif;
-`;
-const TopBar = styled.div`
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 1.75rem; flex-wrap: wrap; gap: 1rem;
-`;
-const TitleGroup = styled.div`display: flex; flex-direction: column; gap: 4px;`;
-const PageTitle = styled.h1`
-  font-size: 22px; font-weight: 600;
-  color: ${({ $c }) => $c.text};
-`;
-const PageSub = styled.p`
-  font-size: 13px;
-  color: ${({ $c }) => $c.textSecondary};
-`;
-const AddBtn = styled.button`
-  display: inline-flex; align-items: center; gap: 7px;
-  background: ${({ $c }) => $c.primary};
-  color: ${({ $c }) => $c.white};
-  border: none;
-  padding: 9px 18px; border-radius: 8px;
-  font-size: 14px; font-weight: 500;
-  font-family: 'Inter', system-ui, sans-serif;
-  text-decoration: none;
-  cursor: pointer; transition: opacity 0.15s;
-  &:hover { opacity: 0.88; }
-`;
-const TabRow = styled.div`
-  display: flex; gap: 8px; margin-bottom: 1.5rem;
-`;
-const Tab = styled.button`
-  padding: 7px 16px; border-radius: 8px;
-  font-size: 13px; font-weight: 500;
-  font-family: 'Inter', system-ui, sans-serif;
-  cursor: pointer; transition: all 0.15s;
-  border: 1px solid ${({ $active, $c }) => $active ? $c.primary : $c.border};
-  background: ${({ $active, $c }) => $active ? $c.primary : $c.surfaceElevated};
-  color: ${({ $active, $c }) => $active ? $c.white : $c.primary};
-  &:hover {
-    background: ${({ $c }) => $c.primary};
-    color: ${({ $c }) => $c.white};
-    border-color: ${({ $c }) => $c.primary};
-  }
-`;
-const FilterBar = styled.div`
-  display: flex; gap: 10px; margin-bottom: 1.5rem; flex-wrap: wrap;
-`;
-const SearchInput = styled.input`
-  flex: 1; min-width: 220px; padding: 9px 14px;
-  border: 1px solid ${({ $c }) => $c.border};
-  border-radius: 8px;
-  font-size: 14px; font-family: 'Inter', system-ui, sans-serif;
-  background: ${({ $c }) => $c.inputBg};
-  color: ${({ $c }) => $c.text};
-  outline: none;
-  &:focus {
-    border-color: ${({ $c }) => $c.primary};
-    box-shadow: 0 0 0 3px ${({ $c }) => $c.primaryLight};
-  }
-  &::placeholder { color: ${({ $c }) => $c.textSecondary}; }
-`;
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
-`;
-const Card = styled.div`
-  background: ${({ $c }) => $c.surfaceElevated};
-  border: 0.5px solid ${({ $c }) => $c.border};
-  border-top: 3px solid ${({ $full, $c }) => $full ? $c.accent : $c.primary};
-  border-radius: 12px; padding: 16px;
-  display: flex; flex-direction: column; gap: 10px;
-  transition: box-shadow 0.15s;
-  &:hover { box-shadow: ${({ $c }) => $c.hoverShadow}; }
-`;
-const CardName = styled.h3`
-  font-size: 15px; font-weight: 500;
-  color: ${({ $c }) => $c.text};
-`;
-const CardMeta = styled.div`display: flex; gap: 6px; align-items: center; flex-wrap: wrap;`;
-const Badge = styled.span`
-  padding: 3px 10px; border-radius: 99px;
-  font-size: 12px; font-weight: 500;
-  background: ${({ $c }) => $c.primaryLight};
-  color: ${({ $c }) => $c.primary};
-`;
-const CyanBadge = styled(Badge)`
-  background: ${({ $c }) => $c.accentLight};
-  color: ${({ $c }) => $c.accent};
-`;
-const AmberBadge = styled(Badge)`
-  background: ${({ $c }) => $c.warningLight};
-  color: ${({ $c }) => $c.warning};
-`;
-const CardFooter = styled.div`
-  display: flex; align-items: center; justify-content: space-between;
-  padding-top: 10px; border-top: 0.5px solid ${({ $c }) => $c.border};
-  margin-top: auto;
-`;
-const MemberCount = styled.span`
-  font-size: 12px;
-  color: ${({ $c }) => $c.textSecondary};
-`;
-const JoinBtn = styled.button`
-  display: inline-flex; align-items: center; gap: 4px;
-  background: ${({ $c }) => $c.primaryLight};
-  color: ${({ $c }) => $c.primary};
-  border: 1px solid ${({ $c }) => $c.border};
-  font-size: 12px; font-weight: 500;
-  font-family: 'Inter', system-ui, sans-serif;
-  cursor: pointer; padding: 5px 12px; border-radius: 6px;
-  transition: all 0.15s;
-  &:hover { background: ${({ $c }) => $c.primary}; color: ${({ $c }) => $c.white}; }
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
-`;
-const EmptyState = styled.div`
-  text-align: center; padding: 4rem 2rem;
-  background: ${({ $c }) => $c.surfaceElevated};
-  border: 0.5px solid ${({ $c }) => $c.border};
-  border-radius: 12px;
-`;
-const Loading = styled.div`
-  text-align: center; padding: 4rem;
-  color: ${({ $c }) => $c.textSecondary};
-  font-size: 14px;
-`;
-const Spinner = styled.div`
-  width: 28px; height: 28px;
-  border: 3px solid ${({ $c }) => $c.primaryLight};
-  border-top-color: ${({ $c }) => $c.primary};
-  border-radius: 50%; animation: spin 0.7s linear infinite;
-  margin: 0 auto 1rem;
-  @keyframes spin { to { transform: rotate(360deg); } }
-`;
-const SuccessMsg = styled.div`
-  background: ${({ $c }) => $c.successLight};
-  border: 1px solid ${({ $c }) => $c.success};
-  border-radius: 8px; padding: 10px 14px;
-  font-size: 13px; color: ${({ $c }) => $c.success}; margin-bottom: 1rem;
-`;
-
-export default function GroupList({ onAdd, onView }) {
+export default function GroupList({ onAdd, onView, onOpenChat }) {
   const { C } = useTheme();
   const [groups, setGroups] = useState([]);
   const [matched, setMatched] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('my');
   const [search, setSearch] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
+  const [toast, setToast] = useState('');
   const [showForm, setShowForm] = useState(false);
+
+  const showToast = (msg) => { 
+    setToast(msg); 
+    setTimeout(() => setToast(''), 3000); 
+  };
 
   const fetchGroups = async () => {
     setLoading(true);
@@ -184,15 +39,15 @@ export default function GroupList({ onAdd, onView }) {
   };
 
   useEffect(() => {
-    const delay = setTimeout(fetchGroups, 400);
+    const delay = setTimeout(fetchGroups, 300);
     return () => clearTimeout(delay);
   }, [tab, search]);
 
-  const handleJoin = async (id) => {
+  const handleJoin = async (e, id) => {
+    e.stopPropagation();
     try {
       await joinGroup(id);
-      setSuccessMsg('You have joined the group.');
-      setTimeout(() => setSuccessMsg(''), 3000);
+      showToast('You joined the group.');
       fetchGroups();
     } catch (err) {
       console.error(err);
@@ -200,91 +55,141 @@ export default function GroupList({ onAdd, onView }) {
   };
 
   const handleGroupCreated = () => {
-    setSuccessMsg('Study group created.');
-    setTimeout(() => setSuccessMsg(''), 3000);
+    showToast('Study group created.');
     if (tab === 'my') fetchGroups();
   };
 
   const displayGroups = tab === 'my' ? groups : matched;
 
+  // Map theme values to CSS custom properties
+  const themeStyles = {
+    '--primary': C.primary,
+    '--primary-light': C.primaryLight,
+    '--accent': C.accent,
+    '--accent-light': C.accentLight,
+    '--warning': C.warning,
+    '--warning-light': C.warningLight,
+    '--white': C.white,
+    '--text': C.text,
+    '--text-secondary': C.textSecondary,
+    '--surface-elevated': C.surfaceElevated,
+    '--border': C.border,
+    '--input-bg': C.inputBg,
+    '--hover-shadow': C.hoverShadow,
+  };
+
   return (
-    <>
-      <GlobalStyle />
-      <Page>
-        <TopBar>
-          <TitleGroup>
-            <PageTitle $c={C}>Study Groups</PageTitle>
-            <PageSub $c={C}>Connect and collaborate with other students who share your interests.</PageSub>
-          </TitleGroup>
-          <AddBtn $c={C} onClick={() => setShowForm(true)}>
-            + Create Group
-          </AddBtn>
-        </TopBar>
+    <div className="group-feature-root group-page" style={themeStyles}>
+      <div className="group-topbar">
+        <div className="group-title-group">
+          <h1 className="group-title">Study Groups</h1>
+          <p className="group-subtitle">Connect and collaborate with students who share your interests.</p>
+        </div>
+        <button className="group-create-btn" onClick={() => setShowForm(true)}>
+          + Create Group
+        </button>
+      </div>
 
-        {successMsg && <SuccessMsg $c={C}>✓ {successMsg}</SuccessMsg>}
-
-        <TabRow>
-          <Tab $c={C} $active={tab === 'my'} onClick={() => setTab('my')}>My Groups</Tab>
-          <Tab $c={C} $active={tab === 'discover'} onClick={() => setTab('discover')}>Discover</Tab>
-        </TabRow>
+      {/* FIX 1: Explicitly using regular div with class name for reliable CSS targets */}
+      <div className="group-controls-row">
+        <div className="group-tabs">
+          <button 
+            className={`group-tab-btn ${tab === 'my' ? 'active' : ''}`} 
+            onClick={() => setTab('my')}
+          >
+            My Groups
+          </button>
+          <button 
+            className={`group-tab-btn ${tab === 'discover' ? 'active' : ''}`} 
+            onClick={() => setTab('discover')}
+          >
+            Discover
+          </button>
+        </div>
 
         {tab === 'my' && (
-          <FilterBar>
-            <SearchInput
-              $c={C}
-              placeholder="Filter by subject."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </FilterBar>
+          <input
+            className="group-form-input"
+            style={{ paddingLeft: '14px', maxWidth: '300px' }}
+            placeholder="Filter by subject…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         )}
+      </div>
 
-        {loading ? (
-          <Loading $c={C}><Spinner $c={C} />Loading groups...</Loading>
-        ) : displayGroups.length === 0 ? (
-          <EmptyState $c={C}>
-            <p style={{ fontSize: '15px', fontWeight: '500', color: C.text, marginBottom: '6px' }}>
-              {tab === 'my' ? 'No groups yet' : 'No matched groups found'}
-            </p>
-            <p style={{ fontSize: '13px', color: C.textSecondary, marginBottom: '1.25rem' }}>
-              {tab === 'my' ? 'Create a group or join one from Discover.' : 'Update your subject interests to get better matches.'}
-            </p>
-            {tab === 'my' && (
-              <AddBtn $c={C} onClick={() => setShowForm(true)} style={{ margin: '0 auto' }}>
-                + Create Group
-              </AddBtn>
-            )}
-          </EmptyState>
-        ) : (
-          <Grid>
-            {displayGroups.map(group => (
-              <Card $c={C} key={group.id} $full={group.is_full}>
-                <CardName $c={C}>{group.name}</CardName>
-                <CardMeta>
-                  {group.subject_tag && <Badge $c={C}>{group.subject_tag}</Badge>}
-                  <CyanBadge $c={C}>{group.formation_type}</CyanBadge>
-                  {group.is_full && <AmberBadge $c={C}>Full</AmberBadge>}
-                </CardMeta>
-                <CardFooter $c={C}>
-                  <MemberCount $c={C}>{group.member_count} / {group.max_members} members</MemberCount>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <JoinBtn $c={C} onClick={() => onView(group.id)}>View</JoinBtn>
-                    {tab === 'discover' && (
-                      <JoinBtn
-                        $c={C}
-                        onClick={() => handleJoin(group.id)}
-                        disabled={group.is_full}
-                      >
-                        {group.is_full ? 'Full' : 'Join'}
-                      </JoinBtn>
-                    )}
+      {!loading && displayGroups.length > 0 && (
+        <span className="group-member-count" style={{ display: 'block', marginBottom: '1rem' }}>
+          {displayGroups.length} group{displayGroups.length !== 1 ? 's' : ''} found
+        </span>
+      )}
+
+      {loading ? (
+        <div className="group-detail-loading">
+          <div className="group-detail-spinner" />
+          Loading groups…
+        </div>
+      ) : displayGroups.length === 0 ? (
+        <div className="group-form-preview-card empty" style={{ padding: '3rem', textAlign: 'center' }}>
+          <p className="group-form-preview-empty-text" style={{ fontSize: '15px', marginBottom: '12px' }}>
+            {tab === 'my' ? 'No groups joined yet.' : 'No matching groups found.'}
+          </p>
+          {tab === 'my' && (
+            <button className="group-create-btn" onClick={() => setShowForm(true)} style={{ margin: '0 auto' }}>
+              + Create Group
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="group-grid">
+          {displayGroups.map((group) => {
+            const pct = Math.round((group.member_count / group.max_members) * 100);
+            return (
+              <div 
+                className="group-card" 
+                key={group.id} 
+                onClick={() => onView(group.id)}
+              >
+                <div>
+                  <h3 className="group-card-title">{group.name}</h3>
+                  <div className="group-card-meta">
+                    {group.subject_tag && <span className="group-badge">{group.subject_tag.toUpperCase()}</span>}
+                    <span className="group-badge cyan">{group.formation_type}</span>
+                    {group.is_full && <span className="group-badge amber">Full</span>}
                   </div>
-                </CardFooter>
-              </Card>
-            ))}
-          </Grid>
-        )}
-      </Page>
+                </div>
+
+                <div>
+                  <div className="group-capacity-bar">
+                    <div 
+                      className={`group-capacity-fill ${group.is_full ? 'full' : ''}`} 
+                      style={{ width: `${pct}%` }} 
+                    />
+                  </div>
+
+                  <div className="group-card-footer">
+                    <span className="group-member-count">{group.member_count} / {group.max_members} members</span>
+                    <div className="group-btn-row" onClick={(e) => e.stopPropagation()}>
+                      <button className="group-view-btn" onClick={() => onView(group.id)}>View</button>
+                      {tab === 'discover' && (
+                        <button
+                          className="group-join-btn"
+                          onClick={(e) => handleJoin(e, group.id)}
+                          disabled={group.is_full}
+                        >
+                          {group.is_full ? 'Full' : 'Join'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {toast && <div className="group-detail-toast">✓ {toast}</div>}
 
       {showForm && (
         <GroupForm
@@ -292,6 +197,6 @@ export default function GroupList({ onAdd, onView }) {
           onSuccess={handleGroupCreated}
         />
       )}
-    </>
+    </div>
   );
 }

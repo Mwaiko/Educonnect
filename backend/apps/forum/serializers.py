@@ -1,7 +1,10 @@
 from django.db import transaction
 from rest_framework import serializers
 
-from .models import Answer, Question, QuestionTag, Tag
+from tag.models import Tag
+from tag.serializers import TagSerializer
+
+from .models import Answer, Question
 
 
 class AuthorSerializer(serializers.Serializer):
@@ -84,7 +87,10 @@ class QuestionListSerializer(serializers.ModelSerializer):
         return {"id": obj.author_id, "username": obj.author.first_name}
 
     def get_tags(self, obj):
-        return [tag.name for tag in obj.tags.all()]
+        # Relies on the view prefetching `tags` with `select_related(
+        # "parent__parent")` so `.breadcrumb` doesn't trigger extra queries
+        # per tag, per question.
+        return TagSerializer(obj.tags.all(), many=True).data
 
 
 class QuestionDetailSerializer(QuestionListSerializer):
@@ -108,8 +114,13 @@ class QuestionDetailSerializer(QuestionListSerializer):
 
 
 class QuestionCreateSerializer(serializers.ModelSerializer):
-    tags = serializers.ListField(
-        child=serializers.CharField(max_length=80),
+    # Tags are now selected from the existing curated taxonomy, not typed
+    # freely — a question can only be tagged with leaf-level (level=TAG)
+    # Tag rows. Frontend should drive this off GET /forum/tags/ (cascading
+    # category -> subcategory -> tag picker), not a free-text field.
+    tags = serializers.PrimaryKeyRelatedField(
+        queryset=Tag.objects.leaf_tags(),
+        many=True,
         required=False,
         default=list,
     )
@@ -128,36 +139,24 @@ class QuestionCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Body cannot be empty.")
         return value
 
-    def validate_tags(self, value):
-        cleaned = []
-        for raw in value:
-            name = raw.strip().lower()
-            if name:
-                cleaned.append(name)
-        return cleaned
-
     @transaction.atomic
     def create(self, validated_data):
-        tag_names = validated_data.pop("tags", [])
+        tags = validated_data.pop("tags", [])
         question = Question.objects.create(
             author=self.context["request"].user, **validated_data
         )
-        self._set_tags(question, tag_names)
+        # QuestionTag has no fields beyond the two FKs, so .set() is safe
+        # here (Django allows add()/set() on M2M-through as long as no
+        # extra required fields exist on the through model).
+        question.tags.set(tags)
         return question
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        tag_names = validated_data.pop("tags", None)
+        tags = validated_data.pop("tags", None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
-        if tag_names is not None:
-            QuestionTag.objects.filter(question=instance).delete()
-            self._set_tags(instance, tag_names)
+        if tags is not None:
+            instance.tags.set(tags)
         return instance
-
-    @staticmethod
-    def _set_tags(question, tag_names):
-        for name in tag_names:
-            tag, _ = Tag.objects.get_or_create(name=name)
-            QuestionTag.objects.get_or_create(question=question, tag=tag)

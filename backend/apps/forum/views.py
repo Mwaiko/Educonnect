@@ -1,11 +1,13 @@
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Prefetch
 from django_filters import rest_framework as filters
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from .models import Answer, AnswerUpvote, Question, QuestionUpvote, Tag
+from tags.models import Tag
+
+from .models import Answer, AnswerUpvote, Question, QuestionUpvote
 from .permissions import (
     IsAuthorOrAdminOrReadOnly,
     IsExpertSolverOrAdmin,
@@ -42,7 +44,7 @@ except ImportError:  # pragma: no cover - notifications module not yet merged
 
 
 class QuestionFilter(filters.FilterSet):
-    tag = filters.CharFilter(field_name="tags__name", lookup_expr="iexact")
+    tag = filters.CharFilter(field_name="tags__slug", lookup_expr="iexact")
     is_resolved = filters.BooleanFilter(field_name="is_resolved")
     search = filters.CharFilter(method="filter_search")
 
@@ -69,7 +71,13 @@ class QuestionViewSet(viewsets.ModelViewSet):
     queryset = (
         Question.objects.all()
         .select_related("author")
-        .prefetch_related("tags", "answers__author")
+        .prefetch_related(
+            # select_related on the tag's ancestor chain so
+            # Tag.breadcrumb doesn't fire extra queries per tag per
+            # question when serialized.
+            Prefetch("tags", queryset=Tag.objects.select_related("parent__parent")),
+            "answers__author",
+        )
     )
     permission_classes = [permissions.IsAuthenticated, IsAuthorOrAdminOrReadOnly]
     filter_backends = [filters.DjangoFilterBackend]
@@ -247,14 +255,3 @@ class AnswerViewSet(viewsets.GenericViewSet):
 
         obj = get_object_or_404(Answer, pk=self.kwargs.get("pk"))
         return obj
-
-
-class TagListView(generics.ListAPIView):
-    """GET /api/v1/forum/tags/ -> simple list of tag names for autocomplete."""
-
-    queryset = Tag.objects.all()
-    permission_classes = [permissions.IsAuthenticated]
-
-    def list(self, request, *args, **kwargs):
-        names = list(self.get_queryset().values_list("name", flat=True))
-        return Response(names)
