@@ -4,16 +4,9 @@
    API: POST /api/v1/auth/register/
    ============================================================ */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "./AuthPages.css";
-
-const SUBJECTS = [
-  "Algorithms", "Data Structures", "Mathematics",
-  "Databases", "Networks", "Operating Systems",
-  "Software Engineering", "Machine Learning",
-  "Web Development", "Computer Architecture",
-];
 
 const ROLES = [
   { value: "student",      label: "Student",       desc: "Browse, ask, and answer questions" },
@@ -34,14 +27,44 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState("");
 
+  // Subjects now come from the shared tag taxonomy (subcategory-level
+  // tags, e.g. "Algorithms", "Databases") instead of a hardcoded list,
+  // so this stays in sync with whatever admins add via /api/v1/tags/.
+  const [subjects, setSubjects]           = useState([]);
+  const [subjectsLoading, setSubjectsLoading] = useState(true);
+  const [subjectsError, setSubjectsError]     = useState("");
+
   const set = (key, val) => setForm((p) => ({ ...p, [key]: val }));
-  const get_Subjects = async (e) => {
-    
-  }
-  const toggleSubject = (s) =>
-    set("subjects", form.subjects.includes(s)
-      ? form.subjects.filter((x) => x !== s)
-      : [...form.subjects, s]
+
+  const getSubjects = async () => {
+    setSubjectsLoading(true);
+    setSubjectsError("");
+    try {
+      const res = await fetch("/api/v1/tags/?level=category");
+      if (!res.ok) throw new Error("Request failed");
+      const data = await res.json();
+      // DRF paginated views wrap results in {count, next, previous, results},
+      // while a plain ListAPIView (no pagination configured) returns a bare
+      // array. Handle both so subjects.map() never blows up.
+      const list = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : [];
+      setSubjects(list);
+    } catch {
+      setSubjectsError("Couldn't load subject list. Please refresh and try again.");
+    } finally {
+      setSubjectsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    getSubjects();
+  }, []);
+
+  // form.subjects holds tag UUIDs (the API expects a list of Tag pks),
+  // not display names.
+  const toggleSubject = (id) =>
+    set("subjects", form.subjects.includes(id)
+      ? form.subjects.filter((x) => x !== id)
+      : [...form.subjects, id]
     );
 
   const pwdRules = {
@@ -278,33 +301,50 @@ export default function RegisterPage() {
           {/* ── Step 2 ── */}
           {step === 2 && (
             <form onSubmit={handleSubmit} noValidate>
-              <div className="auth-subject-grid">
-                {SUBJECTS.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    className={`auth-subject-chip ${form.subjects.includes(s) ? "selected" : ""}`}
-                    onClick={() => toggleSubject(s)}
-                  >
-                    {form.subjects.includes(s) && (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-                    )}
-                    {s}
-                  </button>
-                ))}
-              </div>
+              {subjectsLoading && (
+                <p className="auth-subject-count">Loading subjects…</p>
+              )}
 
-              <p className="auth-subject-count">
-                {form.subjects.length === 0
-                  ? "Select subjects you study or teach"
-                  : `${form.subjects.length} subject${form.subjects.length > 1 ? "s" : ""} selected`}
-              </p>
+              {!subjectsLoading && subjectsError && (
+                <div className="ec-alert ec-alert-error" role="alert">
+                  {subjectsError}{" "}
+                  <button type="button" className="auth-link auth-link--bold" onClick={getSubjects}>
+                    Retry
+                  </button>
+                </div>
+              )}
+
+              {!subjectsLoading && !subjectsError && (
+                <>
+                  <div className="auth-subject-grid">
+                    {subjects.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        className={`auth-subject-chip ${form.subjects.includes(s.id) ? "selected" : ""}`}
+                        onClick={() => toggleSubject(s.id)}
+                      >
+                        {form.subjects.includes(s.id) && (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        )}
+                        {s.name}
+                      </button>
+                    ))}
+                  </div>
+
+                  <p className="auth-subject-count">
+                    {form.subjects.length === 0
+                      ? "Select subjects you study or teach"
+                      : `${form.subjects.length} subject${form.subjects.length > 1 ? "s" : ""} selected`}
+                  </p>
+                </>
+              )}
 
               <div className="auth-step2-actions">
                 <button type="button" className="btn btn-ghost" onClick={() => { setStep(1); setError(""); }}>
                   ← Back
                 </button>
-                <button type="submit" className="btn btn-primary btn-lg" disabled={loading}>
+                <button type="submit" className="btn btn-primary btn-lg" disabled={loading || subjectsLoading}>
                   {loading ? <><span className="ec-spinner" />Creating account…</> : "Create account"}
                 </button>
               </div>

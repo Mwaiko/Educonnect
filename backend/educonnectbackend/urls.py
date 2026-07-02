@@ -13,4 +13,5 @@ urlpatterns = [
     path('api/v1/chat/', include('chat.urls')),
     path('api/v1/notifications/', include('notifications.urls')),
     path('api/v1/dashboard/', include((dashboard_urlpatterns, 'dashboard'))),
+    path("api/v1/tags/", include("apps.tag.urls")),
 ]

@@ -134,14 +134,14 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
-
+{/* FORGOT PASSWORD FUNCTIONALITY
             <div className="auth-form-options">
               <label className="ec-checkbox-label">
                 <input type="checkbox" className="ec-checkbox" />
                 Remember me
               </label>
               <a href="/forgot-password" className="auth-link">Forgot password?</a>
-            </div>
+            </div> */}
 
             <button
               type="submit"

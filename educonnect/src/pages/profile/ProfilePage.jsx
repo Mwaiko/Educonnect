@@ -1,32 +1,20 @@
 import { useState, useEffect } from "react";
-// NOTE: this file is expected to live at src/components/profile/ProfilePage.jsx,
-// one level deeper than dashboard.jsx (which imports api from "../api/axios").
-// Adjust this path if your folder layout differs.
 import api from "../../api/axios";
-
-// ═════════════════════════════════════════════════════════════════════════════
-//  Mirrors apps/users/models.py — keep in sync with the backend.
-// ═════════════════════════════════════════════════════════════════════════════
-const SUBJECTS = [
-  "Algorithms", "Data Structures", "Mathematics", "Databases", "Networks",
-  "Operating Systems", "Software Engineering", "Machine Learning",
-  "Web Development", "Computer Architecture",
-];
+import "./profilepage.css"; // Ensure this import points to your new CSS file
 
 const ROLE_LABELS = { student: "Student", expert_solver: "Expert Solver" };
 
-// ═════════════════════════════════════════════════════════════════════════════
-//  API
-//  GET   /api/v1/users/profile/  → full profile incl. stats
-//  PATCH /api/v1/users/profile/  → { first_name, last_name, bio, subjects }
-//  POST  /api/v1/auth/password-change/ → { old_password, new_password }
-//  The password-change field names are a best guess — confirm they match
-//  PasswordChangeSerializer and adjust if needed.
-// ═════════════════════════════════════════════════════════════════════════════
 const profileApi = {
-  get: () => api.get("/users/profile/").then(r => r.data),
-  update: (payload) => api.patch("/users/profile/", payload).then(r => r.data),
-  changePassword: (payload) => api.post("/auth/password-change/", payload).then(r => r.data),
+  get: () => api.get("/users/profile/").then((r) => r.data),
+  update: (payload) => api.patch("/users/profile/", payload).then((r) => r.data),
+  changePassword: (payload) => api.post("/auth/password-change/", payload).then((r) => r.data),
+};
+
+// Subjects are now the top-level "category" tags from the shared tag
+// taxonomy (see apps/tag) instead of a hardcoded list. No query params
+// returns top-level categories by default — see apps/tag/views.py.
+const tagApi = {
+  listSubjectOptions: () => api.get("/tags/").then((r) => r.data),
 };
 
 function getInitials(p) {
@@ -60,72 +48,44 @@ function extractErrorMessage(err, fallback) {
 // ═════════════════════════════════════════════════════════════════════════════
 function HeroAvatar({ initials, size = 80 }) {
   return (
-    <div style={{
-      width: size, height: size, borderRadius: "50%",
-      background: "rgba(255,255,255,0.16)", color: "#fff",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      fontSize: size * 0.36, fontWeight: 700,
-      border: "3px solid rgba(255,255,255,0.35)",
-      flexShrink: 0,
-    }}>{initials}</div>
+    <div className="hero-avatar" style={{ width: size, height: size, fontSize: size * 0.36 }}>
+      {initials}
+    </div>
   );
 }
 
-function Pill({ label, C, tone = "light" }) {
+function Pill({ label, tone = "light" }) {
   return (
-    <span style={{
-      display: "inline-flex", alignItems: "center",
-      padding: "4px 12px", borderRadius: 99,
-      fontSize: 11, fontWeight: 600,
-      background: tone === "light" ? "rgba(255,255,255,0.18)" : C.primaryLight,
-      color: tone === "light" ? "#fff" : C.primary,
-      border: tone === "light" ? "1px solid rgba(255,255,255,0.25)" : "none",
-    }}>{label}</span>
+    <span className={`pill ${tone === "light" ? "pill-light" : "pill-colored"}`}>
+      {label}
+    </span>
   );
 }
 
-function Badge({ label, C }) {
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center",
-      padding: "5px 12px", borderRadius: 99,
-      fontSize: 12, fontWeight: 500,
-      background: C.primaryLight, color: C.primary,
-    }}>{label}</span>
-  );
+function Badge({ label }) {
+  return <span className="badge">{label}</span>;
 }
 
-function SubjectToggle({ label, active, onClick, C }) {
+function SubjectToggle({ label, active, onClick }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      style={{
-        display: "inline-flex", alignItems: "center", gap: 6,
-        padding: "6px 13px", borderRadius: 99,
-        fontSize: 12, fontWeight: 600, cursor: "pointer",
-        border: `1px solid ${active ? C.primary : C.border}`,
-        background: active ? C.primary : "transparent",
-        color: active ? "#fff" : C.textSecondary,
-        transition: "all 0.15s ease",
-      }}
+      className={`subject-toggle ${active ? "active" : ""}`}
     >
-      {active && <span style={{ fontSize: 11 }}>✓</span>}
+      {active && <span className="subject-check">✓</span>}
       {label}
     </button>
   );
 }
 
-function Card({ title, subtitle, children, C }) {
+function Card({ title, subtitle, children }) {
   return (
-    <div style={{
-      background: C.surfaceElevated, border: `1px solid ${C.border}`,
-      borderRadius: 16, padding: 20, boxShadow: C.cardShadow,
-    }}>
+    <div className="card">
       {title && (
-        <div style={{ marginBottom: 16, paddingBottom: 14, borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{title}</div>
-          {subtitle && <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 2 }}>{subtitle}</div>}
+        <div className="card-header">
+          <div className="card-title">{title}</div>
+          {subtitle && <div className="card-subtitle">{subtitle}</div>}
         </div>
       )}
       {children}
@@ -135,93 +95,60 @@ function Card({ title, subtitle, children, C }) {
 
 function Field({ label, children }) {
   return (
-    <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <span style={{ fontSize: 12, fontWeight: 600, color: "inherit", opacity: 0.7 }}>{label}</span>
+    <label className="form-field">
+      <span className="field-label">{label}</span>
       {children}
     </label>
   );
 }
 
-function InfoRow({ label, value, C, last }) {
+function InfoRow({ label, value, last }) {
   return (
-    <div style={{
-      display: "flex", justifyContent: "space-between", alignItems: "center",
-      padding: "10px 0", borderBottom: last ? "none" : `1px solid ${C.border}`,
-      gap: 12,
-    }}>
-      <span style={{ fontSize: 12, color: C.textSecondary }}>{label}</span>
-      <span style={{ fontSize: 13, fontWeight: 600, color: C.text, textAlign: "right" }}>{value}</span>
+    <div className={`info-row ${last ? "last" : ""}`}>
+      <span className="info-label">{label}</span>
+      <span className="info-value">{value}</span>
     </div>
   );
 }
 
-function StatTile({ icon, label, value, color, C }) {
+function StatTile({ icon, label, value, color }) {
   return (
-    <div style={{
-      background: C.surfaceElevated, border: `1px solid ${C.border}`,
-      borderTop: `3px solid ${color}`, borderRadius: 14, padding: "16px 18px",
-      display: "flex", alignItems: "center", gap: 12, boxShadow: C.cardShadow,
-    }}>
-      <div style={{
-        width: 38, height: 38, borderRadius: 10, background: `${color}18`,
-        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0,
-      }}>{icon}</div>
+    <div className="stat-tile" style={{ borderTopColor: color }}>
+      <div className="stat-icon-wrapper" style={{ background: `${color}18` }}>
+        {icon}
+      </div>
       <div>
-        <div style={{ fontSize: 20, fontWeight: 800, color: C.text, lineHeight: 1.1 }}>{value}</div>
-        <div style={{ fontSize: 11, color: C.textSecondary, marginTop: 2 }}>{label}</div>
+        <div className="stat-value">{value}</div>
+        <div className="stat-label">{label}</div>
       </div>
     </div>
   );
 }
 
-function inputStyle(C) {
-  return {
-    padding: "10px 12px", borderRadius: 10, border: `1px solid ${C.border}`,
-    background: C.inputBg, color: C.text, fontSize: 13, fontFamily: "inherit",
-    outline: "none", width: "100%", boxSizing: "border-box",
-  };
-}
-
-function PrimaryButton({ children, C, ...props }) {
+function PrimaryButton({ children, ...props }) {
   return (
-    <button {...props} style={{
-      padding: "10px 18px", borderRadius: 10, border: "none",
-      background: C.primary, color: "#fff", fontSize: 13, fontWeight: 600,
-      cursor: props.disabled ? "default" : "pointer", opacity: props.disabled ? 0.6 : 1,
-      transition: "all 0.2s ease",
-    }}>{children}</button>
+    <button className="btn-primary" {...props}>
+      {children}
+    </button>
   );
 }
 
-function SecondaryButton({ children, C, ...props }) {
+function SecondaryButton({ children, ...props }) {
   return (
-    <button {...props} style={{
-      padding: "10px 18px", borderRadius: 10, border: `1px solid ${C.border}`,
-      background: "transparent", color: C.text, fontSize: 13, fontWeight: 600,
-      cursor: props.disabled ? "default" : "pointer", opacity: props.disabled ? 0.6 : 1,
-      transition: "all 0.2s ease",
-    }}>{children}</button>
+    <button className="btn-secondary" {...props}>
+      {children}
+    </button>
   );
 }
 
-function ErrorText({ text, C }) {
+function ErrorText({ text }) {
   if (!text) return null;
-  return (
-    <div style={{
-      fontSize: 12, color: C.danger, background: C.dangerLight,
-      borderRadius: 8, padding: "8px 12px",
-    }}>{text}</div>
-  );
+  return <div className="error-text">{text}</div>;
 }
 
-function SuccessBanner({ text, C }) {
+function SuccessBanner({ text }) {
   return (
-    <div style={{
-      display: "flex", alignItems: "center", gap: 8,
-      background: C.successLight, color: C.success,
-      border: `1px solid ${C.success}30`, borderRadius: 12,
-      padding: "10px 16px", fontSize: 13, fontWeight: 500,
-    }}>
+    <div className="success-banner">
       <span>✓</span>{text}
     </div>
   );
@@ -230,7 +157,7 @@ function SuccessBanner({ text, C }) {
 // ═════════════════════════════════════════════════════════════════════════════
 //  ROOT — My Profile
 // ═════════════════════════════════════════════════════════════════════════════
-export default function ProfilePage({ C }) {
+export default function ProfilePage() {
   const [status, setStatus] = useState("loading"); // loading | error | ready
   const [profile, setProfile] = useState(null);
   const [editing, setEditing] = useState(false);
@@ -246,16 +173,29 @@ export default function ProfilePage({ C }) {
   const [pwError, setPwError] = useState("");
   const [pwSuccess, setPwSuccess] = useState(false);
 
+  // Available subject tags to choose from while editing (fetched from the
+  // shared tag taxonomy — GET /tags/ with no params returns top-level
+  // categories, which is what "subjects" means on the User model).
+  const [subjectOptions, setSubjectOptions] = useState([]);
+
+  // `profile.subjects` (from the API) is a list of full tag objects
+  // ({id, name, slug, level, parent, breadcrumb}), but the PATCH payload
+  // expects just a list of tag ids (UpdateProfileSerializer.subjects is a
+  // PrimaryKeyRelatedField). So form.subjects stores ids only, and we look
+  // the full objects up in subjectOptions when we need to render a label.
+  const idsOf = (subjects) => (subjects || []).map((s) => s.id);
+
   const load = () => {
     setStatus("loading");
-    profileApi.get()
-      .then(data => {
+    Promise.all([profileApi.get(), tagApi.listSubjectOptions()])
+      .then(([data, tags]) => {
         setProfile(data);
+        setSubjectOptions(tags || []);
         setForm({
           first_name: data.first_name || "",
           last_name: data.last_name || "",
           bio: data.bio || "",
-          subjects: data.subjects || [],
+          subjects: idsOf(data.subjects),
         });
         setStatus("ready");
       })
@@ -269,7 +209,7 @@ export default function ProfilePage({ C }) {
       first_name: profile.first_name || "",
       last_name: profile.last_name || "",
       bio: profile.bio || "",
-      subjects: profile.subjects || [],
+      subjects: idsOf(profile.subjects),
     });
     setSaveError("");
     setSaveSuccess(false);
@@ -281,16 +221,16 @@ export default function ProfilePage({ C }) {
       first_name: profile.first_name || "",
       last_name: profile.last_name || "",
       bio: profile.bio || "",
-      subjects: profile.subjects || [],
+      subjects: idsOf(profile.subjects),
     });
     setSaveError("");
     setEditing(false);
   };
 
-  const toggleSubject = (s) => {
+  const toggleSubject = (id) => {
     setForm(f => ({
       ...f,
-      subjects: f.subjects.includes(s) ? f.subjects.filter(x => x !== s) : [...f.subjects, s],
+      subjects: f.subjects.includes(id) ? f.subjects.filter(x => x !== id) : [...f.subjects, id],
     }));
   };
 
@@ -346,16 +286,8 @@ export default function ProfilePage({ C }) {
   // ─── Loading ──────────────────────────────────────────────────────────────
   if (status === "loading") {
     return (
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "center",
-        minHeight: 400, background: C.surfaceElevated, borderRadius: 16,
-        border: `1px solid ${C.border}`, boxShadow: C.cardShadow,
-      }}>
-        <div style={{
-          width: 32, height: 32, borderRadius: "50%",
-          border: `3px solid ${C.border}`, borderTopColor: C.primary,
-          animation: "spin 0.8s linear infinite",
-        }} />
+      <div className="loading-container">
+        <div className="loading-spinner" />
       </div>
     );
   }
@@ -363,17 +295,11 @@ export default function ProfilePage({ C }) {
   // ─── Error ────────────────────────────────────────────────────────────────
   if (status === "error" || !profile) {
     return (
-      <div style={{
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        gap: 14, minHeight: 400, background: C.surfaceElevated, borderRadius: 16,
-        border: `1px solid ${C.border}`, boxShadow: C.cardShadow, padding: 32, textAlign: "center",
-      }}>
-        <div style={{ fontSize: 40 }}>⚠️</div>
-        <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>Couldn't load your profile</div>
-        <div style={{ fontSize: 13, color: C.textSecondary, maxWidth: 320 }}>
-          Check your connection and try again.
-        </div>
-        <PrimaryButton C={C} onClick={load}>Try again</PrimaryButton>
+      <div className="error-container">
+        <div className="error-icon">⚠️</div>
+        <div className="error-title">Couldn't load your profile</div>
+        <div className="error-desc">Check your connection and try again.</div>
+        <PrimaryButton onClick={load}>Try again</PrimaryButton>
       </div>
     );
   }
@@ -382,153 +308,163 @@ export default function ProfilePage({ C }) {
   const fullName = `${profile.first_name} ${profile.last_name}`.trim() || profile.email;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div className="profile-layout">
       {/* Hero */}
-      <div style={{
-        background: C.gradientHero, borderRadius: 20, padding: "32px",
-        color: "#fff", position: "relative", overflow: "hidden",
-      }}>
-        <div style={{ position: "absolute", top: -60, right: -60, width: 220, height: 220, borderRadius: "50%", background: `radial-gradient(circle, ${C.accent}25, transparent 70%)`, pointerEvents: "none" }} />
-        <div style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", gap: 22, flexWrap: "wrap" }}>
+      <div className="hero-section">
+        <div className="hero-bg-overlay" />
+        <div className="hero-content">
           <HeroAvatar initials={getInitials(profile)} size={80} />
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ fontSize: 23, fontWeight: 800, letterSpacing: "-0.3px" }}>{fullName}</div>
-              <Pill label={ROLE_LABELS[profile.role] || profile.role} C={C} />
+          <div className="hero-info">
+            <div className="hero-title-group">
+              <div className="hero-name">{fullName}</div>
+              <Pill label={ROLE_LABELS[profile.role] || profile.role} />
             </div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.75)", marginTop: 6 }}>{profile.email}</div>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
+            <div className="hero-email">{profile.email}</div>
+            <div className="hero-joined">
               <span>📅</span>Joined {formatJoined(profile)}
             </div>
           </div>
           {!editing && (
-            <button
-              onClick={startEdit}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                padding: "10px 20px", borderRadius: 10,
-                background: "rgba(255,255,255,0.14)", color: "#fff",
-                fontSize: 13, fontWeight: 600, border: "1px solid rgba(255,255,255,0.25)",
-                cursor: "pointer", transition: "all 0.2s ease",
-              }}
-            >✏️ Edit profile</button>
+            <button onClick={startEdit} className="edit-profile-btn">
+              ✏️ Edit profile
+            </button>
           )}
         </div>
       </div>
 
-      {saveSuccess && <SuccessBanner text="Profile updated." C={C} />}
+      {saveSuccess && <SuccessBanner text="Profile updated." />}
 
       {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 14 }}>
-        <StatTile icon="⭐" label="Points" value={profile.points_total ?? 0} color={C.primary} C={C} />
-        <StatTile icon="🔥" label="Day streak" value={profile.streak_count ?? 0} color={C.warning} C={C} />
-        <StatTile icon="🏆" label="Rank" value={profile.rank_position ? `#${profile.rank_position}` : "—"} color={C.accent} C={C} />
+      <div className="stats-grid">
+        <StatTile icon="⭐" label="Points" value={profile.points_total ?? 0} color="var(--primary)" />
+        <StatTile icon="🔥" label="Day streak" value={profile.streak_count ?? 0} color="var(--warning)" />
+        <StatTile icon="🏆" label="Rank" value={profile.rank_position ? `#${profile.rank_position}` : "—"} color="var(--accent)" />
       </div>
 
       {/* Main grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20, alignItems: "start" }}>
+      <div className="main-grid">
         {/* Left column */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 20, minWidth: 0 }}>
-          <Card title="About" C={C}>
+        <div className="grid-column">
+          <Card title="About">
             {editing ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 14, color: C.text }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="edit-form-group">
+                <div className="edit-form-row">
                   <Field label="First name">
                     <input
-                      style={inputStyle(C)} value={form.first_name}
-                      onChange={(e) => setForm(f => ({ ...f, first_name: e.target.value }))}
+                      className="form-input"
+                      value={form.first_name}
+                      onChange={(e) => setForm((f) => ({ ...f, first_name: e.target.value }))}
                     />
                   </Field>
                   <Field label="Last name">
                     <input
-                      style={inputStyle(C)} value={form.last_name}
-                      onChange={(e) => setForm(f => ({ ...f, last_name: e.target.value }))}
+                      className="form-input"
+                      value={form.last_name}
+                      onChange={(e) => setForm((f) => ({ ...f, last_name: e.target.value }))}
                     />
                   </Field>
                 </div>
                 <Field label="Bio">
                   <textarea
-                    rows={4} style={{ ...inputStyle(C), resize: "vertical" }}
+                    rows={4}
+                    className="form-input textarea"
                     placeholder="Tell the community a bit about yourself…"
                     value={form.bio}
-                    onChange={(e) => setForm(f => ({ ...f, bio: e.target.value }))}
+                    onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
                   />
                 </Field>
               </div>
             ) : (
-              <p style={{ fontSize: 13, lineHeight: 1.7, margin: 0, color: profile.bio ? C.text : C.textSecondary }}>
+              <p className={`bio-text ${!profile.bio ? "empty" : ""}`}>
                 {profile.bio || "No bio yet. Click Edit profile to add one."}
               </p>
             )}
           </Card>
 
-          <Card title="Subjects" subtitle="Topics you're learning or can help others with" C={C}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {editing
-                ? SUBJECTS.map(s => (
-                    <SubjectToggle key={s} label={s} active={form.subjects.includes(s)} onClick={() => toggleSubject(s)} C={C} />
-                  ))
-                : (profile.subjects && profile.subjects.length > 0
-                    ? profile.subjects.map(s => <Badge key={s} label={s} C={C} />)
-                    : <span style={{ fontSize: 13, color: C.textSecondary }}>No subjects added yet.</span>
-                  )}
+          <Card title="Subjects" subtitle="Topics you're learning or can help others with">
+            <div className="subjects-container">
+              {editing ? (
+                subjectOptions.map((tag) => (
+                  <SubjectToggle
+                    key={tag.id}
+                    label={tag.name}
+                    active={form.subjects.includes(tag.id)}
+                    onClick={() => toggleSubject(tag.id)}
+                  />
+                ))
+              ) : profile.subjects && profile.subjects.length > 0 ? (
+                profile.subjects.map((s) => <Badge key={s.id} label={s.name} />)
+              ) : (
+                <span className="empty-subjects">No subjects added yet.</span>
+              )}
             </div>
           </Card>
 
           {editing && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div style={{ display: "flex", gap: 10 }}>
-                <PrimaryButton C={C} onClick={handleSave} disabled={saving}>
+            <div className="action-group">
+              <div className="button-row">
+                <PrimaryButton onClick={handleSave} disabled={saving}>
                   {saving ? "Saving…" : "Save changes"}
                 </PrimaryButton>
-                <SecondaryButton C={C} onClick={cancelEdit} disabled={saving}>Cancel</SecondaryButton>
+                <SecondaryButton onClick={cancelEdit} disabled={saving}>
+                  Cancel
+                </SecondaryButton>
               </div>
-              <ErrorText text={saveError} C={C} />
+              <ErrorText text={saveError} />
             </div>
           )}
         </div>
 
         {/* Right column */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 20, minWidth: 0, maxWidth: 400 }}>
-          <Card title="Account" C={C}>
-            <InfoRow label="Email" value={profile.email} C={C} />
-            <InfoRow label="Role" value={ROLE_LABELS[profile.role] || profile.role} C={C} />
-            <InfoRow label="Member since" value={formatJoined(profile)} C={C} last />
+        <div className="grid-column right">
+          <Card title="Account">
+            <InfoRow label="Email" value={profile.email} />
+            <InfoRow label="Role" value={ROLE_LABELS[profile.role] || profile.role} />
+            <InfoRow label="Member since" value={formatJoined(profile)} last />
           </Card>
 
-          <Card title="Password" subtitle="Keep your account secure" C={C}>
+          <Card title="Password" subtitle="Keep your account secure">
             {!pwOpen ? (
-              <SecondaryButton C={C} onClick={() => setPwOpen(true)}>Change password</SecondaryButton>
+              <SecondaryButton onClick={() => setPwOpen(true)}>Change password</SecondaryButton>
             ) : (
-              <form onSubmit={handlePasswordChange} style={{ display: "flex", flexDirection: "column", gap: 12, color: C.text }}>
+              <form onSubmit={handlePasswordChange} className="password-form">
                 <Field label="Current password">
                   <input
-                    type="password" required style={inputStyle(C)}
+                    type="password"
+                    required
+                    className="form-input"
                     value={pwForm.old_password}
-                    onChange={(e) => setPwForm(f => ({ ...f, old_password: e.target.value }))}
+                    onChange={(e) => setPwForm((f) => ({ ...f, old_password: e.target.value }))}
                   />
                 </Field>
                 <Field label="New password">
                   <input
-                    type="password" required minLength={8} style={inputStyle(C)}
+                    type="password"
+                    required
+                    minLength={8}
+                    className="form-input"
                     value={pwForm.new_password}
-                    onChange={(e) => setPwForm(f => ({ ...f, new_password: e.target.value }))}
+                    onChange={(e) => setPwForm((f) => ({ ...f, new_password: e.target.value }))}
                   />
                 </Field>
                 <Field label="Confirm new password">
                   <input
-                    type="password" required style={inputStyle(C)}
+                    type="password"
+                    required
+                    className="form-input"
                     value={pwForm.confirm_password}
-                    onChange={(e) => setPwForm(f => ({ ...f, confirm_password: e.target.value }))}
+                    onChange={(e) => setPwForm((f) => ({ ...f, confirm_password: e.target.value }))}
                   />
                 </Field>
-                <ErrorText text={pwError} C={C} />
-                {pwSuccess && <div style={{ fontSize: 12, color: C.success, fontWeight: 600 }}>✓ Password updated.</div>}
-                <div style={{ display: "flex", gap: 10 }}>
-                  <PrimaryButton type="submit" C={C} disabled={pwSaving}>
+                <ErrorText text={pwError} />
+                {pwSuccess && <div className="password-success-msg">✓ Password updated.</div>}
+                <div className="button-row">
+                  <PrimaryButton type="submit" disabled={pwSaving}>
                     {pwSaving ? "Updating…" : "Update password"}
                   </PrimaryButton>
-                  <SecondaryButton type="button" C={C} onClick={closePasswordForm} disabled={pwSaving}>Cancel</SecondaryButton>
+                  <SecondaryButton type="button" onClick={closePasswordForm} disabled={pwSaving}>
+                    Cancel
+                  </SecondaryButton>
                 </div>
               </form>
             )}

@@ -7,12 +7,12 @@ from apps.tag.serializers import TagSerializer
 
 from .models import User, ROLE_CHOICES
 
-# "Subjects" are subcategory-level tags from the shared taxonomy (e.g.
-# "Algorithms", "Databases") — not top-level categories ("Science") and
-# not leaf tags (which are for tagging forum questions, a level deeper).
-# This queryset is the actual source of truth for what counts as a valid
+# "Subjects" are top-level category tags from the shared taxonomy (e.g.
+# "Science", "Technology") — not subcategory-level tags and not leaf tags
+# (which are for tagging forum questions, two levels deeper). This
+# queryset is the actual source of truth for what counts as a valid
 # subject; there's no separate static choices list to keep in sync.
-SUBJECT_TAGS_QUERYSET = Tag.objects.subcategories()
+SUBJECT_TAGS_QUERYSET = Tag.objects.categories()
 
 VALID_ROLES = [r[0] for r in ROLE_CHOICES]
 
