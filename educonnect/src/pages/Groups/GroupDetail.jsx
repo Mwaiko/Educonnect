@@ -4,13 +4,16 @@ import { getGroup, leaveGroup, createMeetingLink, deleteMeetingLink } from '../.
 const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
 const fmtDateTime = (iso) => iso ? new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : null;
 
-export default function GroupDetail({ groupId, onBack, onOpenChat }) {
+export default function GroupDetail({ groupId, onBack, onOpenChat, currentUser }) {
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [provider, setProvider] = useState('google_meet');
   const [toast, setToast] = useState('');
   const [generatingLink, setGeneratingLink] = useState(false);
   const [deletingLinkId, setDeletingLinkId] = useState(null);
+
+  // Check if the current logged-in user is the one who created this specific group
+  const isGroupCreator = group?.creator?.id === currentUser?.id;
 
   const showToast = (msg) => {
     setToast(msg);
@@ -179,29 +182,35 @@ export default function GroupDetail({ groupId, onBack, onOpenChat }) {
                     <span className="group-detail-link-scheduled">📅 {fmtDateTime(link.scheduled_at)}</span>
                   )}
                 </div>
-                <button
-                  className="group-detail-delete-link-btn"
-                  title="Remove link"
-                  disabled={deletingLinkId === link.id}
-                  onClick={() => handleDeleteLink(link.id)}
-                >
-                  {deletingLinkId === link.id ? '…' : '✕'}
-                </button>
+                {/* Only the group creator can remove meeting links */}
+                {isGroupCreator && (
+                  <button
+                    className="group-detail-delete-link-btn"
+                    title="Remove link"
+                    disabled={deletingLinkId === link.id}
+                    onClick={() => handleDeleteLink(link.id)}
+                  >
+                    {deletingLinkId === link.id ? '…' : '✕'}
+                  </button>
+                )}
               </div>
             ))
           ) : (
-            <div className="group-detail-empty-hint">No links yet. Generate one below.</div>
+            <div className="group-detail-empty-hint">No links yet.</div>
           )}
 
-          <div className="group-detail-generate-row">
-            <select className="group-detail-select" value={provider} onChange={(e) => setProvider(e.target.value)}>
-              <option value="google_meet">Google Meet</option>
-              <option value="zoom">Zoom</option>
-            </select>
-            <button className="group-detail-small-primary-btn" onClick={handleGenerateLink} disabled={generatingLink}>
-              {generatingLink ? 'Generating…' : '+ Add link'}
-            </button>
-          </div>
+          {/* Only the group creator can generate new meeting links */}
+          {isGroupCreator && (
+            <div className="group-detail-generate-row">
+              <select className="group-detail-select" value={provider} onChange={(e) => setProvider(e.target.value)}>
+                <option value="google_meet">Google Meet</option>
+                <option value="zoom">Zoom</option>
+              </select>
+              <button className="group-detail-small-primary-btn" onClick={handleGenerateLink} disabled={generatingLink}>
+                {generatingLink ? 'Generating…' : '+ Add link'}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

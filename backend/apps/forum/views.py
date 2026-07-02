@@ -1,5 +1,5 @@
 from django.db import transaction
-from django.db.models import F, Prefetch
+from django.db.models import Case, F, IntegerField, Prefetch, Value, When
 from django_filters import rest_framework as filters
 from rest_framework import generics, permissions, status, viewsets
 from rest_framework.decorators import action
@@ -7,7 +7,7 @@ from rest_framework.response import Response
 
 from apps.tag.models import Tag
 
-from .models import Answer, AnswerUpvote, Question, QuestionUpvote
+from .models import Answer, AnswerDownvote, AnswerUpvote, Question, QuestionUpvote
 from .permissions import (
     IsAuthorOrAdminOrReadOnly,
     IsExpertSolverOrAdmin,
@@ -41,6 +41,30 @@ except ImportError:  # pragma: no cover - notifications module not yet merged
 
     def notify_answer_accepted(answer):
         return None
+
+try:
+    from apps.users.services import evaluate_role_change
+except ImportError:  # pragma: no cover - users app not yet merged
+    def evaluate_role_change(user):
+        return None
+
+
+# Answers from Expert Solvers are surfaced ahead of regular student answers
+# (but still behind an accepted/endorsed answer, which are stronger signals
+# than the author's role). This is expressed as a queryset annotation
+# rather than Answer.Meta.ordering because the priority depends on a join
+# to the author's role, not a plain field on Answer itself.
+EXPERT_ANSWER_ORDERING_QS = (
+    Answer.objects.select_related("author")
+    .annotate(
+        is_expert_answer=Case(
+            When(author__role="expert_solver", then=Value(1)),
+            default=Value(0),
+            output_field=IntegerField(),
+        )
+    )
+    .order_by("-is_accepted", "-is_endorsed", "-is_expert_answer", "-upvote_count", "created_at")
+)
 
 
 class QuestionFilter(filters.FilterSet):
@@ -76,7 +100,7 @@ class QuestionViewSet(viewsets.ModelViewSet):
             # Tag.breadcrumb doesn't fire extra queries per tag per
             # question when serialized.
             Prefetch("tags", queryset=Tag.objects.select_related("parent__parent")),
-            "answers__author",
+            Prefetch("answers", queryset=EXPERT_ANSWER_ORDERING_QS),
         )
     )
     permission_classes = [permissions.IsAuthenticated, IsAuthorOrAdminOrReadOnly]
@@ -150,6 +174,13 @@ class AnswerViewSet(viewsets.GenericViewSet):
     POST /api/v1/forum/answers/{answer_id}/endorse/      -> toggle endorsement
     POST /api/v1/forum/answers/{answer_id}/accept/       -> accept answer
     POST /api/v1/forum/answers/{answer_id}/upvote/       -> toggle upvote
+    POST /api/v1/forum/answers/{answer_id}/downvote/     -> toggle downvote
+
+    Several of these actions (endorse, accept, upvote, downvote) end by
+    calling evaluate_role_change() on the answer's author — that's the
+    automatic Student <-> Expert Solver promotion/demotion engine. It's a
+    cheap no-op unless the author has enough recent answers to judge and
+    crosses a threshold, so it's safe to call on every one of these.
     """
 
     queryset = Answer.objects.all().select_related("author", "question")
@@ -200,6 +231,7 @@ class AnswerViewSet(viewsets.GenericViewSet):
             award_points(answer.author, "answer_endorsed")
             notify_answer_endorsed(answer)
 
+        evaluate_role_change(answer.author)
         return Response({"is_endorsed": answer.is_endorsed})
 
     @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated, IsQuestionAuthor])
@@ -228,26 +260,74 @@ class AnswerViewSet(viewsets.GenericViewSet):
         award_points(answer.author, "answer_accepted")
         notify_answer_accepted(answer)
 
+        evaluate_role_change(answer.author)
         return Response({"is_accepted": True})
 
     @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
     @transaction.atomic
     def upvote(self, request, pk=None):
         answer = self.get_object()
-        existing = AnswerUpvote.objects.filter(answer=answer, user=request.user).first()
+        existing_up = AnswerUpvote.objects.filter(answer=answer, user=request.user).first()
 
-        if existing:
-            existing.delete()
+        if existing_up:
+            existing_up.delete()
             Answer.objects.filter(pk=answer.pk).update(upvote_count=F("upvote_count") - 1)
             user_has_upvoted = False
         else:
+            # Upvoting clears any existing downvote from this user first —
+            # a user can only hold one direction of vote at a time.
+            existing_down = AnswerDownvote.objects.filter(answer=answer, user=request.user).first()
+            if existing_down:
+                existing_down.delete()
+                Answer.objects.filter(pk=answer.pk).update(downvote_count=F("downvote_count") - 1)
             AnswerUpvote.objects.create(answer=answer, user=request.user)
             Answer.objects.filter(pk=answer.pk).update(upvote_count=F("upvote_count") + 1)
             user_has_upvoted = True
 
-        answer.refresh_from_db(fields=["upvote_count"])
+        answer.refresh_from_db(fields=["upvote_count", "downvote_count"])
+        evaluate_role_change(answer.author)
         return Response(
-            {"upvote_count": answer.upvote_count, "user_has_upvoted": user_has_upvoted}
+            {
+                "upvote_count": answer.upvote_count,
+                "downvote_count": answer.downvote_count,
+                "user_has_upvoted": user_has_upvoted,
+                "user_has_downvoted": False if user_has_upvoted else AnswerDownvote.objects.filter(
+                    answer=answer, user=request.user
+                ).exists(),
+            }
+        )
+
+    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
+    @transaction.atomic
+    def downvote(self, request, pk=None):
+        answer = self.get_object()
+        existing_down = AnswerDownvote.objects.filter(answer=answer, user=request.user).first()
+
+        if existing_down:
+            existing_down.delete()
+            Answer.objects.filter(pk=answer.pk).update(downvote_count=F("downvote_count") - 1)
+            user_has_downvoted = False
+        else:
+            # Downvoting clears any existing upvote from this user first.
+            existing_up = AnswerUpvote.objects.filter(answer=answer, user=request.user).first()
+            if existing_up:
+                existing_up.delete()
+                Answer.objects.filter(pk=answer.pk).update(upvote_count=F("upvote_count") - 1)
+            AnswerDownvote.objects.create(answer=answer, user=request.user)
+            Answer.objects.filter(pk=answer.pk).update(downvote_count=F("downvote_count") + 1)
+            user_has_downvoted = True
+
+        answer.refresh_from_db(fields=["upvote_count", "downvote_count"])
+        evaluate_role_change(answer.author)
+        return Response(
+            {
+                "upvote_count": answer.upvote_count,
+                "downvote_count": answer.downvote_count,
+                "user_has_upvoted": False if user_has_downvoted else AnswerUpvote.objects.filter(
+                    answer=answer, user=request.user
+                ).exists(),
+                "user_has_downvoted": user_has_downvoted,
+            }
         )
 
     def get_object(self):

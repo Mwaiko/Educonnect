@@ -17,6 +17,8 @@ class AuthorSerializer(serializers.Serializer):
 class AnswerSerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField()
     user_has_upvoted = serializers.SerializerMethodField()
+    user_has_downvoted = serializers.SerializerMethodField()
+    net_vote_count = serializers.ReadOnlyField()
 
     class Meta:
         model = Answer
@@ -28,7 +30,10 @@ class AnswerSerializer(serializers.ModelSerializer):
             "is_endorsed",
             "is_accepted",
             "upvote_count",
+            "downvote_count",
+            "net_vote_count",
             "user_has_upvoted",
+            "user_has_downvoted",
             "created_at",
         ]
         read_only_fields = [
@@ -38,17 +43,31 @@ class AnswerSerializer(serializers.ModelSerializer):
             "is_endorsed",
             "is_accepted",
             "upvote_count",
+            "downvote_count",
             "created_at",
         ]
 
     def get_author(self, obj):
-        return {"id": obj.author_id, "username": obj.author.first_name}
+        # `role` is included so the frontend can badge/sort Expert Solver
+        # answers without a second lookup — mirrors the priority already
+        # applied server-side in QuestionViewSet's answers queryset.
+        return {
+            "id": obj.author_id,
+            "username": obj.author.first_name,
+            "role": obj.author.role,
+        }
 
     def get_user_has_upvoted(self, obj):
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return False
         return obj.upvotes.filter(user=request.user).exists()
+
+    def get_user_has_downvoted(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.downvotes.filter(user=request.user).exists()
 
 
 class AnswerCreateSerializer(serializers.ModelSerializer):

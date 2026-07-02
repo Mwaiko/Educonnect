@@ -10,6 +10,7 @@ answer_viewset = AnswerViewSet.as_view({"patch": "partial_update"})
 answer_endorse = AnswerViewSet.as_view({"post": "endorse"})
 answer_accept = AnswerViewSet.as_view({"post": "accept"})
 answer_upvote = AnswerViewSet.as_view({"post": "upvote"})
+answer_downvote = AnswerViewSet.as_view({"post": "downvote"})
 question_answers_create = AnswerViewSet.as_view({"post": "create_for_question"})
 
 urlpatterns = [
@@ -22,6 +23,7 @@ urlpatterns = [
     path("answers/<uuid:pk>/endorse/", answer_endorse, name="answer-endorse"),
     path("answers/<uuid:pk>/accept/", answer_accept, name="answer-accept"),
     path("answers/<uuid:pk>/upvote/", answer_upvote, name="answer-upvote"),
+    path("answers/<uuid:pk>/downvote/", answer_downvote, name="answer-downvote"),
 ]
 
 urlpatterns += router.urls

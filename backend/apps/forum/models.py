@@ -89,6 +89,7 @@ class Answer(models.Model):
     is_endorsed = models.BooleanField(default=False)
     is_accepted = models.BooleanField(default=False)
     upvote_count = models.IntegerField(default=0)
+    downvote_count = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -96,10 +97,18 @@ class Answer(models.Model):
         ordering = ["-is_accepted", "-is_endorsed", "-upvote_count", "created_at"]
         indexes = [
             models.Index(fields=["question", "-created_at"]),
+            models.Index(fields=["author", "-created_at"]),
         ]
 
     def __str__(self):
         return f"Answer to {self.question_id} by {self.author_id}"
+
+    @property
+    def net_vote_count(self):
+        """Upvotes minus downvotes. Used both for display and by the role
+        engine (apps.users.services.evaluate_role_change) to judge whether
+        an Expert Solver's recent answers are landing badly."""
+        return self.upvote_count - self.downvote_count
 
 
 class QuestionUpvote(models.Model):
@@ -126,7 +135,13 @@ class QuestionUpvote(models.Model):
 
 
 class AnswerUpvote(models.Model):
-    """Tracks which users have upvoted which answers (toggleable)."""
+    """Tracks which users have upvoted which answers (toggleable).
+
+    A user may hold at most one of AnswerUpvote / AnswerDownvote for a
+    given answer at a time. That mutual exclusivity is enforced in the
+    view layer (voting one direction clears the other), not via a DB
+    constraint, since the two are separate tables.
+    """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     answer = models.ForeignKey(
@@ -144,5 +159,33 @@ class AnswerUpvote(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["answer", "user"], name="unique_answer_upvote"
+            )
+        ]
+
+
+class AnswerDownvote(models.Model):
+    """Tracks which users have downvoted which answers (toggleable).
+
+    Mirrors AnswerUpvote. Added so answer quality can go negative, which
+    feeds the automatic Expert Solver -> Student demotion check in
+    apps.users.services.evaluate_role_change.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    answer = models.ForeignKey(
+        Answer, on_delete=models.CASCADE, related_name="downvotes"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="answer_downvotes",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "forum_answer_downvote"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["answer", "user"], name="unique_answer_downvote"
             )
         ]

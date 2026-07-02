@@ -1,10 +1,19 @@
 from rest_framework import serializers
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
-from .models import User, SUBJECT_CHOICES, ROLE_CHOICES
 
+from apps.tag.models import Tag
+from apps.tag.serializers import TagSerializer
 
-VALID_SUBJECTS = [s[0] for s in SUBJECT_CHOICES]
+from .models import User, ROLE_CHOICES
+
+# "Subjects" are subcategory-level tags from the shared taxonomy (e.g.
+# "Algorithms", "Databases") — not top-level categories ("Science") and
+# not leaf tags (which are for tagging forum questions, a level deeper).
+# This queryset is the actual source of truth for what counts as a valid
+# subject; there's no separate static choices list to keep in sync.
+SUBJECT_TAGS_QUERYSET = Tag.objects.subcategories()
+
 VALID_ROLES = [r[0] for r in ROLE_CHOICES]
 
 
@@ -14,8 +23,9 @@ VALID_ROLES = [r[0] for r in ROLE_CHOICES]
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, validators=[validate_password])
-    subjects = serializers.ListField(
-        child=serializers.ChoiceField(choices=VALID_SUBJECTS),
+    subjects = serializers.PrimaryKeyRelatedField(
+        queryset=SUBJECT_TAGS_QUERYSET,
+        many=True,
         required=False,
         default=list,
     )
@@ -31,6 +41,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
+        # subjects is a ManyToMany now — User.objects.create_user() already
+        # pops it out and .set()s it after save() (see UserManager), so we
+        # can just pass validated_data straight through.
         return User.objects.create_user(**validated_data)
 
 
@@ -81,6 +94,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     initials = serializers.ReadOnlyField()
     joined_date = serializers.ReadOnlyField()
+    subjects = TagSerializer(many=True, read_only=True)
 
     class Meta:
         model = User
@@ -105,6 +119,7 @@ class PublicUserProfileSerializer(serializers.ModelSerializer):
     """Reduced profile for public /users/:id/ endpoint — hides email."""
     initials = serializers.ReadOnlyField()
     joined_date = serializers.ReadOnlyField()
+    subjects = TagSerializer(many=True, read_only=True)
 
     class Meta:
         model = User
@@ -124,8 +139,9 @@ class PublicUserProfileSerializer(serializers.ModelSerializer):
 
 
 class UpdateProfileSerializer(serializers.ModelSerializer):
-    subjects = serializers.ListField(
-        child=serializers.ChoiceField(choices=VALID_SUBJECTS),
+    subjects = serializers.PrimaryKeyRelatedField(
+        queryset=SUBJECT_TAGS_QUERYSET,
+        many=True,
         required=False,
     )
 

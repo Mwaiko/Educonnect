@@ -7,7 +7,6 @@ from .models import StudyGroup, Membership, MeetingLink
 from .serializers import (
     StudyGroupSerializer,
     CreateStudyGroupSerializer,
-    CreateMeetingLinkSerializer,
 )
 
 
@@ -106,60 +105,6 @@ class StudyGroupLeaveView(APIView):
 
         membership.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-class MeetingLinkCreateView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def post(self, request, pk):
-        try:
-            group = StudyGroup.objects.get(pk=pk)
-        except StudyGroup.DoesNotExist:
-            return Response(
-                {'error': {'code': 'not_found', 'message': 'Study group not found.'}},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        if not Membership.objects.filter(group=group, user=request.user).exists():
-            return Response(
-                {'error': {'code': 'not_member', 'message': 'You must be a member to generate a meeting link.'}},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        serializer = CreateMeetingLinkSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(
-                {'error': {'code': 'validation_error', 'message': 'Invalid data.', 'details': serializer.errors}},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        provider = serializer.validated_data['provider']
-        scheduled_at = serializer.validated_data.get('scheduled_at')
-
-        meeting_url = self._generate_meeting_url(provider, group)
-
-        meeting = MeetingLink.objects.create(
-            group=group,
-            provider=provider,
-            meeting_url=meeting_url,
-            scheduled_at=scheduled_at
-        )
-
-        return Response({
-            'id': str(meeting.id),
-            'provider': meeting.provider,
-            'meeting_url': meeting.meeting_url,
-            'scheduled_at': meeting.scheduled_at,
-        }, status=status.HTTP_201_CREATED)
-
-    def _generate_meeting_url(self, provider, group):
-        import uuid
-        unique_code = str(uuid.uuid4())[:8]
-        if provider == 'google_meet':
-            return f"https://meet.google.com/{unique_code}"
-        elif provider == 'zoom':
-            return f"https://zoom.us/j/{unique_code}"
-        return f"https://meet.example.com/{unique_code}"
 
 
 class MeetingLinkDeleteView(APIView):

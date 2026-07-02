@@ -304,9 +304,15 @@ export default function QuestionDetailPage() {
   const isQuestionAuthor = user?.id === question.author.id;
   const canEndorse = user?.role === "expert_solver" || user?.role === "admin";
 
+  // Mirrors the backend ordering (accepted > endorsed > expert solver >
+  // upvotes) so the list stays correct even if answers are appended to
+  // question.answers client-side (e.g. right after posting a new one).
+  const isExpertAnswer = (answer) => answer.author?.role === "expert_solver";
+
   const sortedAnswers = [...question.answers].sort((a, b) => {
     if (a.is_accepted !== b.is_accepted) return a.is_accepted ? -1 : 1;
     if (a.is_endorsed !== b.is_endorsed) return a.is_endorsed ? -1 : 1;
+    if (isExpertAnswer(a) !== isExpertAnswer(b)) return isExpertAnswer(a) ? -1 : 1;
     return b.upvote_count - a.upvote_count;
   });
 
@@ -462,6 +468,11 @@ export default function QuestionDetailPage() {
                     {answer.is_endorsed && (
                       <Badge variant="cyan" icon={<IconStar size={12} className="icon-accent" />}>
                         Expert endorsed
+                      </Badge>
+                    )}
+                    {!answer.is_accepted && !answer.is_endorsed && isExpertAnswer(answer) && (
+                      <Badge variant="cyan" icon={<IconStar size={12} className="icon-accent" />}>
+                        Expert Solver
                       </Badge>
                     )}
                   </div>

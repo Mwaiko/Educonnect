@@ -1,5 +1,6 @@
 import logging
 
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -12,6 +13,7 @@ from .base import MeetingProviderError
 from .factory import get_meeting_service
 
 logger = logging.getLogger(__name__)
+User = get_user_model()
 
 
 class MeetingLinkCreateView(APIView):
@@ -26,6 +28,8 @@ class MeetingLinkCreateView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        # Any member of the group may generate a meeting link (consistent
+        # with the rest of the API's membership-based permission model).
         if not Membership.objects.filter(group=group, user=request.user).exists():
             return Response(
                 {'error': {'code': 'not_member', 'message': 'You must be a member to generate a meeting link.'}},
@@ -42,9 +46,20 @@ class MeetingLinkCreateView(APIView):
         provider = serializer.validated_data['provider']
         scheduled_at = serializer.validated_data.get('scheduled_at')
 
+        # By design, meetings are always created under the admin/superuser's
+        # connected account (never a regular member's own OAuth tokens) —
+        # students just consume the resulting link.
+        admin_user = User.objects.filter(is_superuser=True).first()
+        if not admin_user:
+            logger.error("Meeting link requested but no superuser account exists (group_id=%s)", group.id)
+            return Response(
+                {'error': {'code': 'admin_missing', 'message': 'No administrator account is configured for meeting creation. Contact support.'}},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
         try:
             service = get_meeting_service(provider)
-            meeting_url = service.create_meeting(group, scheduled_at, request.user)
+            meeting_url = service.create_meeting(group, scheduled_at, admin_user)
         except MeetingProviderError as e:
             return Response(
                 {'error': {'code': 'provider_error', 'message': str(e)}},
@@ -60,10 +75,6 @@ class MeetingLinkCreateView(APIView):
                     scheduled_at=scheduled_at
                 )
         except Exception:
-            # The remote meeting was created but we failed to persist it.
-            # Log loudly so it can be cleaned up / retried manually — full
-            # automated delete-on-rollback per provider is a further step
-            # (Zoom: DELETE /meetings/{id}, Google: events().delete(...)).
             logger.exception(
                 "DB write failed after remote meeting was created "
                 "(provider=%s, group_id=%s, url=%s)",

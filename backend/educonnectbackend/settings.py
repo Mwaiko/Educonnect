@@ -62,7 +62,26 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "educonnectbackend.urls"
+GOOGLE_MEET_CONFIG = {
+    "web": {
+        "client_id": os.environ.get('GOOGLE_CLIENT_ID'),
+        "project_id": "educonnect-meet-integration",
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "client_secret": os.environ.get('GOOGLE_CLIENT_SECRET'),
+        "redirect_uris": ["http://localhost:8000/api/auth/google/callback"]
+    }
+}
 
+# Map these explicitly for your services to fetch
+GOOGLE_CLIENT_ID = GOOGLE_MEET_CONFIG["web"]["client_id"]
+GOOGLE_CLIENT_SECRET = GOOGLE_MEET_CONFIG["web"]["client_secret"]
+
+#ZOOM CREDENTIALS
+ZOOM_ACCOUNT_ID = os.environ.get('ZOOM_ACCOUNT_ID', 'your-zoom-account-id')
+ZOOM_CLIENT_ID = os.environ.get('ZOOM_CLIENT_ID', 'your-zoom-client-id')
+ZOOM_CLIENT_SECRET = os.environ.get('ZOOM_CLIENT_SECRET', 'your-zoom-client-secret')
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",

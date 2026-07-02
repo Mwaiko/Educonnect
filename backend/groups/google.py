@@ -1,5 +1,6 @@
 import logging
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from google.apps import meet_v2
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -45,14 +46,20 @@ class GoogleMeetService(BaseMeetingService):
         """
         Retrieves, validates, and automatically refreshes the user's Google OAuth tokens.
         """
-        token_obj = user.google_oauth_token
+        try:
+            token_obj = user.google_oauth_token
+        except ObjectDoesNotExist:
+            logger.error("Google Meet requested but admin_user_id=%s has no linked Google account", user.id)
+            raise MeetingProviderError(
+                "Google Meet isn't configured yet. The administrator needs to connect a Google account."
+            )
 
         creds = Credentials(
             token=token_obj.access_token,
             refresh_token=token_obj.refresh_token,
             token_uri='https://oauth2.googleapis.com/token',
-            client_id=settings.GOOGLE_CLIENT_ID,
-            client_secret=settings.GOOGLE_CLIENT_SECRET,
+            client_id=settings.GOOGLE_CLIENT_ID, # Fetches from your JSON config mapping
+            client_secret=settings.GOOGLE_CLIENT_SECRET, # Fetches from your JSON config mapping
         )
 
         if creds.expired and creds.refresh_token:
