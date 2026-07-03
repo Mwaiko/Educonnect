@@ -28,17 +28,17 @@ class StreakRecordSerializer(serializers.ModelSerializer):
 
 
 class LeaderboardEntrySerializer(serializers.Serializer):
-    user__id = serializers.IntegerField(source="user_id")
-    user__username = serializers.CharField(source="username")
-    user__first_name = serializers.CharField(source="first_name")
-    user__last_name = serializers.CharField(source="last_name")
-    total_points = serializers.IntegerField()
+    """
+    Expects dicts shaped like the output of services.get_leaderboard():
+    {"user__id", "user__email", "user__first_name", "user__last_name", "total_points"}
+    """
 
     def to_representation(self, instance):
+        full_name = f"{instance['user__first_name']} {instance['user__last_name']}".strip()
         return {
             "user_id": instance["user__id"],
-            "username": instance["user__username"],
-            "full_name": f"{instance['user__first_name']} {instance['user__last_name']}".strip(),
+            "username": full_name or instance["user__email"],
+            "full_name": full_name,
             "total_points": instance["total_points"],
         }
 

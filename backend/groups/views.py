@@ -2,13 +2,13 @@ from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Q
+from django.db.models import Q, Count, F
 from .models import StudyGroup, Membership, MeetingLink
 from .serializers import (
     StudyGroupSerializer,
     CreateStudyGroupSerializer,
 )
-
+from apps.tag.models import Tag
 
 class StudyGroupListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
@@ -23,9 +23,7 @@ class StudyGroupListCreateView(generics.ListCreateAPIView):
         queryset = StudyGroup.objects.filter(memberships__user=user).select_related('subject_tag')
         subject = self.request.query_params.get('subject_tag')
         if subject:
-            # subject_tag is now a FK - keep the free-text search UX by
-            # matching against the related Tag's name instead of the old
-            # CharField itself.
+            
             queryset = queryset.filter(subject_tag__name__icontains=subject)
         return queryset.distinct()
 
@@ -136,29 +134,27 @@ class MeetingLinkDeleteView(APIView):
         meeting.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
 class StudyGroupMatchView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = self.request.user
-        
-        # Call .all() to get a QuerySet from the ManyToMany relationship manager
-        user_subjects = user.subjects.all() if hasattr(user, 'subjects') else []
+        user_subjects = user.subjects.all()  # category-level tags
 
-        if not user_subjects:
-            groups = StudyGroup.objects.exclude(
-                memberships__user=user
-            ).filter(
-                memberships__isnull=False
-            ).select_related('subject_tag').distinct()[:10]
+        groups = StudyGroup.objects.exclude(
+            memberships__user=user
+        ).select_related('subject_tag').annotate(
+            _member_count=Count('memberships', distinct=True)
+        ).filter(_member_count__lt=F('max_members'))
+
+        if user_subjects.exists():
+            # leaf tags whose subcategory's parent category is one the user follows
+            leaf_tags = Tag.objects.leaf_tags().filter(parent__parent__in=user_subjects)
+            groups = groups.filter(subject_tag__in=leaf_tags)
         else:
-            groups = StudyGroup.objects.exclude(
-                memberships__user=user
-            ).filter(
-                # Use subject_tag__in with the Tag QuerySet
-                subject_tag__in=user_subjects
-            ).select_related('subject_tag').distinct()[:10]
+            groups = groups.filter(_member_count__gte=1)
+
+        groups = groups.distinct()[:10]
 
         serializer = StudyGroupSerializer(groups, many=True, context={'request': request})
         return Response(serializer.data)

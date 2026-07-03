@@ -72,7 +72,7 @@ from apps.forum.models import (
 )
 from resources.models import Resource, Vote as ResourceVote
 from groups.models import StudyGroup, Membership, MeetingLink
-from apps.notifications.models import Notification
+from notifications.models import Notification
 from apps.gamification.models import StreakRecord, PointTransaction
 # -------------------------------------------------------------
 

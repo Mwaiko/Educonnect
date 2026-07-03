@@ -160,6 +160,28 @@ export default function GroupList({ onAdd, onView, onOpenChat }) {
                 </div>
 
                 <div>
+                  {group.members?.length > 0 && (
+                    <div className="group-avatar-stack">
+                      {group.members.slice(0, 4).map((m) => {
+                        const initials = m.user?.username ? m.user.username.slice(0, 2).toUpperCase() : 'U';
+                        return (
+                          <div
+                            className="group-avatar-stack-item"
+                            key={m.id}
+                            title={m.user?.username || m.user?.email}
+                          >
+                            {initials}
+                          </div>
+                        );
+                      })}
+                      {group.members.length > 4 && (
+                        <div className="group-avatar-stack-item more" title={`${group.members.length - 4} more`}>
+                          +{group.members.length - 4}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="group-capacity-bar">
                     <div 
                       className={`group-capacity-fill ${group.is_full ? 'full' : ''}`} 

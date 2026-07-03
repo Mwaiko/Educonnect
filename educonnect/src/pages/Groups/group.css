@@ -1273,7 +1273,36 @@
   animation: groupFadeIn 200ms ease;
   z-index: 110;
 }
-
+.group-avatar-stack {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+ 
+.group-avatar-stack-item {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: var(--primary);
+  border: 2px solid var(--white);
+  font-size: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: -8px;
+}
+ 
+.group-avatar-stack-item:first-child {
+  margin-left: 0;
+}
+ 
+.group-avatar-stack-item.more {
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+}
+ 
 /* ==========================================================================
    SHARED KEYFRAME ANIMATIONS
    ========================================================================== */
