@@ -803,3 +803,54 @@ VALUES
 ;
 
 COMMIT;
+-- ============================================================
+-- Group chat seed data
+-- Generated 2026-07-03T09:00:00
+--
+-- Adds conversations for the 5 groups that had no chat_chatmessage
+-- rows yet (Web Dev Warriors, Cloud & DevOps Guild, Engineering
+-- Study Hall, Discrete Math & Graph Theory Circle, Physics Problem
+-- Solvers). The original 4 groups already have chat from
+-- demo_seed_data.sql -- this file doesn't duplicate those.
+--
+-- Every sender here is an actual member of that group, per
+-- demo_groups_seed.sql's groups_membership rows.
+--
+-- Requires: demo_seed_data.sql and demo_groups_seed.sql already run.
+-- ============================================================
+
+BEGIN;
+
+-- chat_chatmessage: 27 rows
+INSERT INTO chat_chatmessage (id, group_id, sender_id, content, sent_at)
+VALUES
+    ('d43db67e-272b-4d90-bebd-ab8efe5a1eaf', '938ea7aa-ae03-4786-9947-f3a7c67e7975', 5, 'Anyone tried versioning APIs with URL paths vs headers? Debating it for the group project.', '2026-07-01T08:00:00'),
+    ('67b8454d-028d-4a79-ad8e-feb13d6391f1', '938ea7aa-ae03-4786-9947-f3a7c67e7975', 16, 'URL path (/v1/...) every time IMO — way easier to debug and test in the browser.', '2026-07-01T08:06:00'),
+    ('99dfc3a6-efae-4ea4-900a-a91918e69059', '938ea7aa-ae03-4786-9947-f3a7c67e7975', 17, 'Agreed, headers are cleaner in theory but a pain when you''re just curling something quickly.', '2026-07-01T08:12:00'),
+    ('160358ee-5cfa-4a48-9ac0-06ae60f3313b', '938ea7aa-ae03-4786-9947-f3a7c67e7975', 5, 'Fair, going with /v1/ then. Also does anyone have a good WebSocket auth pattern? Token in the query string feels wrong.', '2026-07-01T08:18:00'),
+    ('de1b209a-fd71-41b5-8696-d1fa3adb6e7e', '938ea7aa-ae03-4786-9947-f3a7c67e7975', 17, 'Send the token in the initial handshake message after connecting instead of the URL — keeps it out of logs.', '2026-07-01T08:24:00'),
+    ('d2bbadc3-7e62-4df0-a9be-630095aff96a', '938ea7aa-ae03-4786-9947-f3a7c67e7975', 16, 'That''s what we did for the chat feature actually, works well.', '2026-07-01T08:30:00'),
+    ('24e5cb23-3b3e-4b1d-918a-fa4c60037e2a', '7e52f8e3-a12f-439f-98b4-3ab057501850', 8, 'Anyone else fighting with Lambda cold starts this week? Feels like a losing battle.', '2026-07-01T08:00:00'),
+    ('84b9d13e-819c-4266-b736-9dcd5dc162d1', '7e52f8e3-a12f-439f-98b4-3ab057501850', 13, 'Provisioned concurrency on the hot endpoints helped us a lot, worth the extra cost.', '2026-07-01T08:06:00'),
+    ('085a67c1-8225-406a-adad-e1e545ba0425', '7e52f8e3-a12f-439f-98b4-3ab057501850', 17, '+1, also trim your deployment package — heavy imports at module load time make it way worse.', '2026-07-01T08:12:00'),
+    ('e2fc6183-1381-4c84-b6e6-2f5006635bd9', '7e52f8e3-a12f-439f-98b4-3ab057501850', 8, 'Good call, our bundle has a full pandas import we don''t even use anymore.', '2026-07-01T08:18:00'),
+    ('65e3cc1d-96f0-45ce-8b92-ff4d4e5e5633', '7e52f8e3-a12f-439f-98b4-3ab057501850', 13, 'Classic. On a different note, my pod''s still crash-looping, going to bring it up at the next session.', '2026-07-01T08:24:00'),
+    ('ba50e6c5-1908-4c71-a00e-74c8a8d72e95', '7e52f8e3-a12f-439f-98b4-3ab057501850', 17, 'Bring the `kubectl describe pod` output, not just logs — usually the real reason is in there.', '2026-07-01T08:30:00'),
+    ('34ce8126-9cca-4132-814c-8de813fc7f17', '47efd643-9f89-4258-90d2-f33857244e61', 6, 'Does anyone have a clean derivation for the pulley problem from this week''s set? Keep messing up the signs.', '2026-07-01T08:00:00'),
+    ('44e203cf-5282-4af2-a139-63143680a59e', '47efd643-9f89-4258-90d2-f33857244e61', 15, 'Pick one direction as positive for the whole system before you write anything down — that''s usually where it goes wrong.', '2026-07-01T08:06:00'),
+    ('937ff5d7-f596-4621-a78b-9079c84e05e9', '47efd643-9f89-4258-90d2-f33857244e61', 6, 'That actually fixed it, thank you!', '2026-07-01T08:12:00'),
+    ('dbeb744f-0df9-4099-b333-8cb2bf674a18', '47efd643-9f89-4258-90d2-f33857244e61', 15, 'No problem. Also open to swapping notes — I could use help with structural load calculations sometime.', '2026-07-01T08:18:00'),
+    ('5c6c37e7-91eb-4fc4-836b-718cabc69451', '47efd643-9f89-4258-90d2-f33857244e61', 6, 'Deal, let''s do a session on that next week.', '2026-07-01T08:24:00'),
+    ('e66d7fd7-d551-4587-9ee2-9c1bd3316772', 'ea4a30b7-73ad-49bf-94b0-9775493ac82d', 18, 'Anyone want to work through the graph coloring proof together before Friday?', '2026-07-01T08:00:00'),
+    ('b4a82c2f-ba00-452a-aa27-36db5d067450', 'ea4a30b7-73ad-49bf-94b0-9775493ac82d', 3, 'Yes please, chromatic number bounds are not clicking for me yet.', '2026-07-01T08:06:00'),
+    ('19e6ac44-0e6b-4550-b6ed-0b40d703cda5', 'ea4a30b7-73ad-49bf-94b0-9775493ac82d', 18, 'Start with greedy coloring as the baseline bound, then look for extra structure like bipartiteness — tightens it a lot.', '2026-07-01T08:12:00'),
+    ('93259cab-0fb3-49be-8c53-056b5810910e', 'ea4a30b7-73ad-49bf-94b0-9775493ac82d', 3, 'That helps a lot actually. Sending over my attempt so far.', '2026-07-01T08:18:00'),
+    ('fc7ac842-f116-4805-b7d9-fd6693fecc8a', 'ea4a30b7-73ad-49bf-94b0-9775493ac82d', 18, 'Looks solid, just double check the base case.', '2026-07-01T08:24:00'),
+    ('99fa959d-80b8-4ad8-8fd2-53890b57a036', '1ee6c196-b2e9-4fac-9b75-aa6a807b19a3', 9, 'Studying entropy this week and the formula makes sense but the intuition still doesn''t fully land for me.', '2026-07-01T08:00:00'),
+    ('f42de2d8-b394-4a44-801c-f46dc9c39a3f', '1ee6c196-b2e9-4fac-9b75-aa6a807b19a3', 6, 'Think of it as: there are just way more disordered configurations than ordered ones, so systems drift toward them statistically.', '2026-07-01T08:06:00'),
+    ('634e95d3-3f08-4bfd-8d39-9e9a5d1795e8', '1ee6c196-b2e9-4fac-9b75-aa6a807b19a3', 9, 'Oh that actually helps a lot, thank you.', '2026-07-01T08:12:00'),
+    ('641b9077-eede-4dbe-a8a9-19c1fed99cb6', '1ee6c196-b2e9-4fac-9b75-aa6a807b19a3', 6, 'Also are we still doing the Newtonian mechanics review before the quiz?', '2026-07-01T08:18:00'),
+    ('8736bc96-5bda-416f-bda7-9839cccc2713', '1ee6c196-b2e9-4fac-9b75-aa6a807b19a3', 9, 'Yes, same time as usual. I''ll bring the pulley problem we worked through.', '2026-07-01T08:24:00')
+;
+
+COMMIT;
