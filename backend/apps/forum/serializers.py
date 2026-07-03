@@ -4,7 +4,12 @@ from rest_framework import serializers
 from apps.tag.models import Tag
 from apps.tag.serializers import TagSerializer
 
-from .models import Answer, Question
+# NOTE: adjust this import if the resources app's python path/app label
+# differs from apps.resources / "resources".
+from resources.models import Resource
+from resources.serializers import ResourceSerializer
+
+from .models import Answer, AnswerResource, Question
 
 
 class AuthorSerializer(serializers.Serializer):
@@ -14,11 +19,91 @@ class AuthorSerializer(serializers.Serializer):
     username = serializers.CharField()
 
 
+class AnswerResourceSerializer(serializers.ModelSerializer):
+    """Read-only representation of a resource suggested under an answer.
+
+    Renders as a small card: the full nested resource (title, url, type,
+    tag breadcrumb, net_votes, ...) plus who suggested it here and when.
+    """
+
+    resource = ResourceSerializer(read_only=True)
+    suggested_by = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AnswerResource
+        fields = ["id", "resource", "suggested_by", "created_at"]
+
+    def get_suggested_by(self, obj):
+        return {"id": obj.suggested_by_id, "username": obj.suggested_by.first_name}
+
+
+class AnswerResourceCreateSerializer(serializers.Serializer):
+    """Attaches a resource to an answer.
+
+    Accepts EITHER:
+      - resource_id: link an existing resource from the repository, or
+      - title + url (+ optional resource_type / tag_id): create a brand
+        new Resource in the shared repository and link it in one step.
+
+    Exactly one of these two paths should be used per call.
+    """
+
+    resource_id = serializers.PrimaryKeyRelatedField(
+        queryset=Resource.objects.all(), source="resource", required=False
+    )
+    title = serializers.CharField(required=False, allow_blank=True, max_length=255)
+    url = serializers.URLField(required=False, allow_blank=True)
+    resource_type = serializers.ChoiceField(
+        choices=Resource.RESOURCE_TYPES, required=False, allow_blank=True
+    )
+    tag_id = serializers.PrimaryKeyRelatedField(
+        source="tag",
+        queryset=Tag.objects.leaf_tags(),
+        required=False,
+        allow_null=True,
+    )
+
+    def validate(self, attrs):
+        has_existing = bool(attrs.get("resource"))
+        has_new = bool(attrs.get("title", "").strip()) and bool(attrs.get("url", "").strip())
+        if has_existing and has_new:
+            raise serializers.ValidationError(
+                "Provide either resource_id OR title + url, not both."
+            )
+        if not has_existing and not has_new:
+            raise serializers.ValidationError(
+                "Provide either resource_id (an existing resource) or "
+                "title + url (to add a new one)."
+            )
+        return attrs
+
+    @transaction.atomic
+    def create(self, validated_data):
+        answer = self.context["answer"]
+        user = self.context["request"].user
+
+        resource = validated_data.get("resource")
+        if resource is None:
+            resource = Resource.objects.create(
+                submitted_by=user,
+                title=validated_data["title"].strip(),
+                url=validated_data["url"].strip(),
+                resource_type=validated_data.get("resource_type") or None,
+                tag=validated_data.get("tag"),
+            )
+
+        link, _created = AnswerResource.objects.get_or_create(
+            answer=answer, resource=resource, defaults={"suggested_by": user}
+        )
+        return link
+
+
 class AnswerSerializer(serializers.ModelSerializer):
     author = serializers.SerializerMethodField()
     user_has_upvoted = serializers.SerializerMethodField()
     user_has_downvoted = serializers.SerializerMethodField()
     net_vote_count = serializers.ReadOnlyField()
+    suggested_resources = AnswerResourceSerializer(many=True, read_only=True)
 
     class Meta:
         model = Answer
@@ -34,6 +119,7 @@ class AnswerSerializer(serializers.ModelSerializer):
             "net_vote_count",
             "user_has_upvoted",
             "user_has_downvoted",
+            "suggested_resources",
             "created_at",
         ]
         read_only_fields = [
@@ -44,6 +130,7 @@ class AnswerSerializer(serializers.ModelSerializer):
             "is_accepted",
             "upvote_count",
             "downvote_count",
+            "suggested_resources",
             "created_at",
         ]
 

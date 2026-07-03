@@ -189,3 +189,47 @@ class AnswerDownvote(models.Model):
                 fields=["answer", "user"], name="unique_answer_downvote"
             )
         ]
+
+
+class AnswerResource(models.Model):
+    """forum_answer_resource — resources suggested alongside a specific
+    answer, as a way to point the question's author (and future readers)
+    toward further reading.
+
+    This is a through-table rather than a FK on Resource itself: the
+    Resource row lives in the shared apps.resources repository exactly
+    like any resource submitted from that section of the site, and the
+    same resource can legitimately be suggested under more than one
+    answer/question. `resource` is nullable=False on purpose — a link
+    with no resource shouldn't exist; if the resource is deleted from the
+    repository, the suggestion under this answer should disappear too
+    (hence CASCADE, not SET_NULL).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    answer = models.ForeignKey(
+        Answer, on_delete=models.CASCADE, related_name="suggested_resources"
+    )
+    # NOTE: adjust "resources.Resource" if the resources app's label
+    # differs from "resources" in INSTALLED_APPS.
+    resource = models.ForeignKey(
+        "resources.Resource", on_delete=models.CASCADE, related_name="answer_links"
+    )
+    suggested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="resource_suggestions",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "forum_answer_resource"
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["answer", "resource"], name="unique_answer_resource"
+            )
+        ]
+
+    def __str__(self):
+        return f"Resource {self.resource_id} suggested on answer {self.answer_id}"

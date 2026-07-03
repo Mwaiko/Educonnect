@@ -1,0 +1,4 @@
+1.How are Study Groups Selected
+2.Admin Dashboard Screen/Superuser
+3.How to Load GOOGLE OAUTH credentials into the database
+4.Handling data consistency

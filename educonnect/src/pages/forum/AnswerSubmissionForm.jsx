@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import forumApi from "../../api/forumApi";
+import SuggestResourcePanel from "./SuggestResourcePanel";
 import "./forumTheme.css";
 
 /**
  * Answer Submission Form — EduConnect Design System Implementation
- * Styling lives entirely in forumTheme.css (see .ans-* classes).
+ * Styling lives entirely in forumTheme.css (see .ans-* classes), plus
+ * answerResources.css for the "suggest a resource" panel (.ares-* classes).
  */
 
 /* ── SVG Icons (inline, no deps) ──────────────────────────────────── */
@@ -81,6 +83,8 @@ export default function AnswerSubmissionForm({ questionId, onPosted }) {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [stagedResources, setStagedResources] = useState([]);
+  const [resourceWarning, setResourceWarning] = useState(null);
   const textareaRef = useRef(null);
   const MAX_CHARS = 2000;
 
@@ -118,12 +122,49 @@ export default function AnswerSubmissionForm({ questionId, onPosted }) {
     setSubmitting(true);
     setError(null);
     setSuccess(false);
+    setResourceWarning(null);
 
     try {
       const answer = await forumApi.postAnswer(questionId, { body: trimmed });
+
+      // Resources can only be linked once the answer exists. Attach each
+      // staged item now; a resource failing to attach shouldn't undo the
+      // answer post itself, so failures are surfaced as a soft warning
+      // rather than a blocking error.
+      let suggestedResources = [];
+      if (stagedResources.length > 0) {
+        const outcomes = await Promise.allSettled(
+          stagedResources.map((item) =>
+            forumApi.suggestAnswerResource(
+              answer.id,
+              item.mode === "existing"
+                ? { resource_id: item.resource.id }
+                : {
+                    title: item.title,
+                    url: item.url,
+                    resource_type: item.resource_type || undefined,
+                    tag_id: item.tag_id || undefined,
+                  }
+            )
+          )
+        );
+        suggestedResources = outcomes
+          .filter((o) => o.status === "fulfilled")
+          .map((o) => o.value);
+        const failedCount = outcomes.filter((o) => o.status === "rejected").length;
+        if (failedCount > 0) {
+          setResourceWarning(
+            failedCount === stagedResources.length
+              ? "Your answer posted, but the suggested resource(s) couldn't be attached."
+              : `Your answer posted. ${failedCount} suggested resource(s) couldn't be attached.`
+          );
+        }
+      }
+
       setBody("");
+      setStagedResources([]);
       setSuccess(true);
-      onPosted?.(answer);
+      onPosted?.({ ...answer, suggested_resources: suggestedResources });
     } catch (err) {
       const apiError = err?.response?.data?.body;
       setError(
@@ -184,6 +225,9 @@ export default function AnswerSubmissionForm({ questionId, onPosted }) {
         </div>
       </div>
 
+      {/* ── Suggest a resource ───────────────────────────────────── */}
+      <SuggestResourcePanel staged={stagedResources} onChange={setStagedResources} />
+
       {/* ── Error Alert ───────────────────────────────────────────── */}
       {error && (
         <div id="answer-error" role="alert" className="ans-alert error">
@@ -195,6 +239,24 @@ export default function AnswerSubmissionForm({ questionId, onPosted }) {
             type="button"
             onClick={() => setError(null)}
             aria-label="Dismiss error"
+            className="ans-alert-close"
+          >
+            <IconClose size={14} className="icon-danger" />
+          </button>
+        </div>
+      )}
+
+      {/* ── Resource Attach Warning (soft — answer still posted) ───── */}
+      {resourceWarning && (
+        <div role="status" className="ans-alert error">
+          <div className="ans-alert-icon">
+            <IconAlert size={16} className="icon-danger" />
+          </div>
+          <span className="ans-alert-text error">{resourceWarning}</span>
+          <button
+            type="button"
+            onClick={() => setResourceWarning(null)}
+            aria-label="Dismiss warning"
             className="ans-alert-close"
           >
             <IconClose size={14} className="icon-danger" />

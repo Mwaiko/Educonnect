@@ -142,13 +142,9 @@ class StudyGroupMatchView(APIView):
 
     def get(self, request):
         user = self.request.user
-        # NOTE: this assumes `user.subjects` now yields leaf Tag ids (uuids)
-        # rather than the old free-text subject strings, since subject_tag
-        # is a FK. If `user.subjects` actually stores something else
-        # (e.g. tag slugs), swap `subject_tag_id__in=user_subjects` below
-        # for `subject_tag__slug__in=user_subjects`. Wasn't able to verify
-        # against the User model, which wasn't provided.
-        user_subjects = getattr(user, 'subjects', [])
+        
+        # Call .all() to get a QuerySet from the ManyToMany relationship manager
+        user_subjects = user.subjects.all() if hasattr(user, 'subjects') else []
 
         if not user_subjects:
             groups = StudyGroup.objects.exclude(
@@ -160,7 +156,8 @@ class StudyGroupMatchView(APIView):
             groups = StudyGroup.objects.exclude(
                 memberships__user=user
             ).filter(
-                subject_tag_id__in=user_subjects
+                # Use subject_tag__in with the Tag QuerySet
+                subject_tag__in=user_subjects
             ).select_related('subject_tag').distinct()[:10]
 
         serializer = StudyGroupSerializer(groups, many=True, context={'request': request})

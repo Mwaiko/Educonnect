@@ -11,6 +11,8 @@ answer_endorse = AnswerViewSet.as_view({"post": "endorse"})
 answer_accept = AnswerViewSet.as_view({"post": "accept"})
 answer_upvote = AnswerViewSet.as_view({"post": "upvote"})
 answer_downvote = AnswerViewSet.as_view({"post": "downvote"})
+answer_suggest_resource = AnswerViewSet.as_view({"post": "suggest_resource"})
+answer_remove_resource = AnswerViewSet.as_view({"delete": "remove_resource"})
 question_answers_create = AnswerViewSet.as_view({"post": "create_for_question"})
 
 urlpatterns = [
@@ -24,6 +26,16 @@ urlpatterns = [
     path("answers/<uuid:pk>/accept/", answer_accept, name="answer-accept"),
     path("answers/<uuid:pk>/upvote/", answer_upvote, name="answer-upvote"),
     path("answers/<uuid:pk>/downvote/", answer_downvote, name="answer-downvote"),
+    path(
+        "answers/<uuid:pk>/resources/",
+        answer_suggest_resource,
+        name="answer-suggest-resource",
+    ),
+    path(
+        "answers/<uuid:pk>/resources/<uuid:resource_id>/",
+        answer_remove_resource,
+        name="answer-remove-resource",
+    ),
 ]
 
 urlpatterns += router.urls

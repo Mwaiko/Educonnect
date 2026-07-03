@@ -7,7 +7,14 @@ from rest_framework.response import Response
 
 from apps.tag.models import Tag
 
-from .models import Answer, AnswerDownvote, AnswerUpvote, Question, QuestionUpvote
+from .models import (
+    Answer,
+    AnswerDownvote,
+    AnswerResource,
+    AnswerUpvote,
+    Question,
+    QuestionUpvote,
+)
 from .permissions import (
     IsAuthorOrAdminOrReadOnly,
     IsExpertSolverOrAdmin,
@@ -15,6 +22,8 @@ from .permissions import (
 )
 from .serializers import (
     AnswerCreateSerializer,
+    AnswerResourceCreateSerializer,
+    AnswerResourceSerializer,
     AnswerSerializer,
     QuestionCreateSerializer,
     QuestionDetailSerializer,
@@ -49,6 +58,13 @@ except ImportError:  # pragma: no cover - users app not yet merged
         return None
 
 
+# Resources suggested under an answer are shown newest-first, with the
+# resource + tag breadcrumb + suggester select_related in so rendering an
+# answer's resource cards doesn't fan out into N extra queries.
+ANSWER_RESOURCES_QS = AnswerResource.objects.select_related(
+    "resource__tag__parent__parent", "resource__submitted_by", "suggested_by"
+)
+
 # Answers from Expert Solvers are surfaced ahead of regular student answers
 # (but still behind an accepted/endorsed answer, which are stronger signals
 # than the author's role). This is expressed as a queryset annotation
@@ -63,6 +79,7 @@ EXPERT_ANSWER_ORDERING_QS = (
             output_field=IntegerField(),
         )
     )
+    .prefetch_related(Prefetch("suggested_resources", queryset=ANSWER_RESOURCES_QS))
     .order_by("-is_accepted", "-is_endorsed", "-is_expert_answer", "-upvote_count", "created_at")
 )
 
@@ -169,12 +186,14 @@ class QuestionViewSet(viewsets.ModelViewSet):
 
 class AnswerViewSet(viewsets.GenericViewSet):
     """
-    POST /api/v1/forum/questions/{question_id}/answers/  -> create answer
-    PATCH /api/v1/forum/answers/{answer_id}/             -> edit answer
-    POST /api/v1/forum/answers/{answer_id}/endorse/      -> toggle endorsement
-    POST /api/v1/forum/answers/{answer_id}/accept/       -> accept answer
-    POST /api/v1/forum/answers/{answer_id}/upvote/       -> toggle upvote
-    POST /api/v1/forum/answers/{answer_id}/downvote/     -> toggle downvote
+    POST   /api/v1/forum/questions/{question_id}/answers/         -> create answer
+    PATCH  /api/v1/forum/answers/{answer_id}/                     -> edit answer
+    POST   /api/v1/forum/answers/{answer_id}/endorse/              -> toggle endorsement
+    POST   /api/v1/forum/answers/{answer_id}/accept/                -> accept answer
+    POST   /api/v1/forum/answers/{answer_id}/upvote/                -> toggle upvote
+    POST   /api/v1/forum/answers/{answer_id}/downvote/              -> toggle downvote
+    POST   /api/v1/forum/answers/{answer_id}/resources/             -> suggest a resource
+    DELETE /api/v1/forum/answers/{answer_id}/resources/{resource_id}/ -> remove a suggested resource
 
     Several of these actions (endorse, accept, upvote, downvote) end by
     calling evaluate_role_change() on the answer's author — that's the
@@ -183,12 +202,16 @@ class AnswerViewSet(viewsets.GenericViewSet):
     crosses a threshold, so it's safe to call on every one of these.
     """
 
-    queryset = Answer.objects.all().select_related("author", "question")
+    queryset = Answer.objects.all().select_related("author", "question").prefetch_related(
+        Prefetch("suggested_resources", queryset=ANSWER_RESOURCES_QS)
+    )
     permission_classes = [permissions.IsAuthenticated]
 
     def get_serializer_class(self):
         if self.action == "create_for_question":
             return AnswerCreateSerializer
+        if self.action == "suggest_resource":
+            return AnswerResourceCreateSerializer
         return AnswerSerializer
 
     @transaction.atomic
@@ -329,6 +352,45 @@ class AnswerViewSet(viewsets.GenericViewSet):
                 "user_has_downvoted": user_has_downvoted,
             }
         )
+
+    @action(detail=True, methods=["post"], permission_classes=[permissions.IsAuthenticated])
+    @transaction.atomic
+    def suggest_resource(self, request, pk=None):
+        """Attach a resource to this answer — either an existing repository
+        resource (`resource_id`) or a brand-new one (`title` + `url` [+
+        `resource_type`, `tag_id`]), which is created in the shared
+        Resource repository and linked in the same step. Only the answer's
+        author (or an admin) can suggest resources for it, same as editing.
+        """
+        answer = self.get_object()
+        if not (answer.author_id == request.user.id or request.user.role == "admin"):
+            return Response(
+                {"detail": "Only the answer's author can suggest resources for it."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer = AnswerResourceCreateSerializer(
+            data=request.data, context={"request": request, "answer": answer}
+        )
+        serializer.is_valid(raise_exception=True)
+        link = serializer.save()
+
+        out = AnswerResourceSerializer(link, context={"request": request})
+        return Response(out.data, status=status.HTTP_201_CREATED)
+
+    @transaction.atomic
+    def remove_resource(self, request, pk=None, resource_id=None):
+        answer = self.get_object()
+        if not (answer.author_id == request.user.id or request.user.role == "admin"):
+            return Response(
+                {"detail": "Only the answer's author can remove suggested resources."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        deleted, _ = answer.suggested_resources.filter(resource_id=resource_id).delete()
+        if not deleted:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def get_object(self):
         from django.shortcuts import get_object_or_404

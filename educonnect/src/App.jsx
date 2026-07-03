@@ -6,8 +6,6 @@ import { ThemeProvider } from './context/ThemeContext'; // Import the provider
 import LoginPage          from "./pages/LoginPage";
 import RegisterPage       from "./pages/RegisterPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
-import UserProfilePage    from "./pages/UserProfilePage";
-import EditProfilePage    from "./pages/EditProfilePage";
 
 // The Real Main Dashboard View (imported from your dashboard.jsx)
 import MainDashboard      from "./pages/dashboard";
@@ -119,12 +117,7 @@ export default function App() {
             </RequireAuth>
           } />
 
-          <Route path="/profile" element={
-            <RequireAuth><UserProfilePage /></RequireAuth>
-          } />
-          <Route path="/profile/edit" element={
-            <RequireAuth><EditProfilePage /></RequireAuth>
-          } />
+          
 
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

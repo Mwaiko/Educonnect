@@ -70,6 +70,18 @@ client.interceptors.response.use(
   toggleAnswerUpvote: (answerId) =>
     client.post(`/forum/answers/${answerId}/upvote/`).then((res) => res.data),
 
+  // POST /api/v1/forum/answers/{id}/resources/
+  // payload is EITHER { resource_id } (attach an existing resource) OR
+  // { title, url, resource_type?, tag_id? } (create + attach a new one).
+  suggestAnswerResource: (answerId, payload) =>
+    client
+      .post(`/forum/answers/${answerId}/resources/`, payload)
+      .then((res) => res.data),
+
+  // DELETE /api/v1/forum/answers/{id}/resources/{resourceId}/
+  removeAnswerResource: (answerId, resourceId) =>
+    client.delete(`/forum/answers/${answerId}/resources/${resourceId}/`),
+
   // GET /api/v1/forum/tags/
   listTags: () => client.get("/forum/tags/").then((res) => res.data),
 };

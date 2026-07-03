@@ -15,6 +15,110 @@ const MAX_TITLE = 255;
  * validates `tags` as a list of existing leaf Tag ids, so free text would
  * just 400.
  */
+const GUIDELINES = [
+  {
+    title: "Search first",
+    body: "Someone may have already asked this. A quick search can save you the wait — and points you to an answer immediately.",
+  },
+  {
+    title: "Write a specific, one-sentence title",
+    body: "Summarize the actual problem, not just the topic. \u201CWhy does Dijkstra's algorithm break with negative edge weights?\u201D is far easier to answer than \u201CGraph question\u201D.",
+  },
+  {
+    title: "Explain what you've tried",
+    body: "Describe your approach so far, what you expected to happen, and what actually happened instead. This stops solvers from suggesting things you've already ruled out.",
+  },
+  {
+    title: "Include code, errors, or examples",
+    body: "Paste the relevant snippet, the exact error message, or a small example. Concrete details get concrete answers.",
+  },
+  {
+    title: "Tag it accurately",
+    body: "Pick tags that match the actual subject and technique involved, not just the general course. Good tags help the right solvers find your question.",
+  },
+  {
+    title: "Keep it to one question",
+    body: "If you have several unrelated questions, post them separately — it's easier for solvers to answer, and easier for others to find later.",
+  },
+];
+
+function GuidelinesModal({ onClose }) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="guidelines-title"
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(15, 23, 42, 0.5)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "20px",
+        zIndex: 100,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "var(--ec-surface, #fff)",
+          borderRadius: "14px",
+          maxWidth: "560px",
+          width: "100%",
+          maxHeight: "85vh",
+          overflowY: "auto",
+          padding: "28px",
+          boxShadow: "0 20px 50px rgba(0,0,0,0.2)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
+          <h2 id="guidelines-title" style={{ margin: 0, fontSize: "18px", fontWeight: 700 }}>
+            How to ask a good question
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              background: "none",
+              border: "none",
+              fontSize: "20px",
+              lineHeight: 1,
+              cursor: "pointer",
+              color: "inherit",
+              opacity: 0.6,
+            }}
+          >
+            ×
+          </button>
+        </div>
+        <p style={{ fontSize: "13px", opacity: 0.75, marginTop: "6px" }}>
+          A clear, specific question gets faster and better answers. A few things that help:
+        </p>
+        <ol style={{ margin: "16px 0 0", padding: "0 0 0 20px", display: "flex", flexDirection: "column", gap: "14px" }}>
+          {GUIDELINES.map((g) => (
+            <li key={g.title} style={{ fontSize: "13px", lineHeight: 1.6 }}>
+              <strong style={{ display: "block", marginBottom: "2px" }}>{g.title}</strong>
+              <span style={{ opacity: 0.85 }}>{g.body}</span>
+            </li>
+          ))}
+        </ol>
+        <div style={{ marginTop: "20px", textAlign: "right" }}>
+          <button
+            type="button"
+            onClick={onClose}
+            className="ec-btn-base ec-btn-primary"
+          >
+            Got it
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AskQuestionForm() {
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
@@ -24,6 +128,7 @@ export default function AskQuestionForm() {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [showGuidelines, setShowGuidelines] = useState(false);
 
   const [availableTags, setAvailableTags] = useState([]);
   const [tagsLoading, setTagsLoading] = useState(true);
@@ -117,11 +222,18 @@ export default function AskQuestionForm() {
         <h1 className="form-title">Ask a question</h1>
         <p className="form-subtitle">
           Be specific — a clear title and details help solvers respond faster.{" "}
-          <a href="#" className="form-link">
+          <button
+            type="button"
+            onClick={() => setShowGuidelines(true)}
+            className="form-link"
+            style={{ background: "none", border: "none", padding: 0, font: "inherit", cursor: "pointer" }}
+          >
             How to ask a good question
-          </a>
+          </button>
         </p>
       </div>
+
+      {showGuidelines && <GuidelinesModal onClose={() => setShowGuidelines(false)} />}
 
       {/* Global error */}
       {submitError && (
