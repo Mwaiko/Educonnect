@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getTags } from '../../api/tags';
+import { getTags } from '../api/tags';
 
 /**
  * Three-level cascading picker over the shared Tag taxonomy

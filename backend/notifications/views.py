@@ -22,14 +22,19 @@ class NotificationMarkReadView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
+        return self._mark_read(pk)
+
+    def patch(self, request, pk):
+        return self._mark_read(pk)
+
+    def _mark_read(self, pk):
         try:
-            notification = Notification.objects.get(pk=pk, recipient=request.user)
+            notification = Notification.objects.get(pk=pk, recipient=self.request.user)
         except Notification.DoesNotExist:
             return Response(
                 {'error': {'code': 'not_found', 'message': 'Notification not found.'}},
                 status=status.HTTP_404_NOT_FOUND
             )
-
         notification.is_read = True
         notification.save()
         return Response({'is_read': True}, status=status.HTTP_200_OK)
@@ -40,4 +45,4 @@ class NotificationMarkAllReadView(APIView):
 
     def post(self, request):
         Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
-        return Response({'message': 'All notifications have been read.'}, status=status.HTTP_200_OK)
+        return Response({'message': 'All notifications marked as read.'}, status=status.HTTP_200_OK)
