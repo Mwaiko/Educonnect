@@ -269,11 +269,20 @@ class DashboardStatsView(APIView):
         ).count()
         hours_spent = sessions_attended
 
+        # `cards` powers the top stats-grid (StatCard expects
+        # {icon, label, value, delta, color}). The profile-strip used to
+        # pull its questions/answers/resources breakdown from here too,
+        # but those aren't users-app data — they live in forum/resources.
+        # Per request, the profile strip now only shows fields that
+        # actually exist on the User model itself (via /auth/me/), so
+        # this endpoint stays scoped to the stat cards.
         stats_data = {
-            "total_interactions": total_interactions,
-            "hours_spent": hours_spent,
-            "completed_tasks": completed_tasks,
-            "global_rank": user.rank_position,
+            "cards": [
+                {"icon": "⚡", "label": "Total Interactions", "value": total_interactions, "delta": "", "color": "primary"},
+                {"icon": "⏱️", "label": "Hours Spent", "value": hours_spent, "delta": "", "color": "accent"},
+                {"icon": "✅", "label": "Completed Tasks", "value": completed_tasks, "delta": "", "color": "success"},
+                {"icon": "🏅", "label": "Global Rank", "value": user.rank_position, "delta": "", "color": "warning"},
+            ],
         }
 
         return Response(stats_data, status=status.HTTP_200_OK)

@@ -69,7 +69,20 @@ const dashboardApi = {
   getQuestions:     () => api.get("/forum/questions/?page_size=5&ordering=-created_at").then(r => (r.data.results ?? r.data).map(normalizeQuestion)),
   getStudyGroups:   () => api.get("/groups/?page_size=5").then(r => (r.data.results ?? r.data).map(normalizeStudyGroup)),
   getNotifications: () => api.get("/notifications/").then(r => r.data.results ?? r.data),
-  getLeaderboard:   () => api.get("/gamification/leaderboard/?timeframe=weekly").then(r => r.data.leaderboard ?? r.data),
+  getLeaderboard: () =>
+  api.get("/gamification/leaderboard/?timeframe=weekly").then(r => {
+    const list = r.data.leaderboard ?? r.data;
+    return list.map((p, i) => ({
+      rank: i + 1,
+      name: p.full_name || p.username,
+      points: p.total_points,
+      streak: p.streak ?? 0,          // see note below — not in API yet
+      initials: (p.full_name || p.username || "?")
+        .split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase(),
+      color: "primary",               // or derive from user_id if you want variety
+      isMe: false,
+    }));
+  }),
   getResources:     () => api.get("/resources/?page_size=5&ordering=-net_votes").then(r => r.data.results ?? r.data),
   getActivity:      () => api.get("/dashboard/activity/").then(r => r.data.results ?? r.data),
   markNotificationRead: (id) => api.patch(`/notifications/${id}/`, { is_read: true }),
@@ -803,7 +816,7 @@ function DashboardView({ onViewProfile, onViewQuestions, onViewLeaderboard, onVi
   const [greeting, setGreeting] = useState("Good morning");
 
   const [user, setUser] = useState(null);
-  const [stats, setStats] = useState([]);
+  const [stats, setStats] = useState({ cards: [], profile: {} });
   const [questions, setQuestions] = useState([]);
   const [studyGroups, setStudyGroups] = useState([]);
   const [notifications, setNotifications] = useState([]);
@@ -841,7 +854,7 @@ function DashboardView({ onViewProfile, onViewQuestions, onViewLeaderboard, onVi
       const results = await Promise.allSettled(
         calls.map(async ([key, fn, setter]) => {
           const data = await fn();
-          if (mounted) setter(data ?? []);
+          if (mounted) setter(data ?? (key === "stats" ? { cards: [], profile: {} } : []));
         })
       );
 
@@ -915,13 +928,23 @@ function DashboardView({ onViewProfile, onViewQuestions, onViewLeaderboard, onVi
     );
   }
 
-  const safeUser = user ?? {
-    streak: 0, role: "Member",
-    points: 0, questionsAsked: 0, answersGiven: 0, resourcesShared: 0, rank: "—",
+  const safeUser = user ?? { role: "Member" };
+  // joined_date already comes pre-formatted ("July 2026") from
+  // UserProfileSerializer.joined_date — there's no raw date_joined field
+  // on this endpoint to re-parse.
+  const joinedDate = user?.joined_date ?? null;
+
+  // Profile-strip only shows fields the users app actually owns
+  // (points_total/streak_count/rank_position on the User model, via
+  // /auth/me/). Questions asked / answers given / resources shared live
+  // in other apps (forum, resources) and aren't represented here, so
+  // they're intentionally left off rather than faked from another
+  // endpoint.
+  const safeProfile = {
+    points: user?.points_total ?? 0,
+    streak: user?.streak_count ?? 0,
+    rankPosition: user?.rank_position ?? "—",
   };
-  const joinedDate = user?.date_joined
-    ? new Date(user.date_joined).toLocaleDateString(undefined, { month: "short", year: "numeric" })
-    : null;
 
   const unreadCount = notifications.filter(n => !n.read).length;
   const markAsRead = (id) => {
@@ -972,7 +995,7 @@ function DashboardView({ onViewProfile, onViewQuestions, onViewLeaderboard, onVi
           </div>
 
           <div className="dashboard-streak-badge" style={{ "--primary": C.primary }}>
-            <span className="dashboard-streak-icon">🔥</span>{safeUser.streak}-day streak
+            <span className="dashboard-streak-icon">🔥</span>{safeProfile.streak}-day streak
           </div>
 
           <div className="notif-bell-wrap">
@@ -1006,8 +1029,8 @@ function DashboardView({ onViewProfile, onViewQuestions, onViewLeaderboard, onVi
       </div>
 
       <div className="stats-grid">
-        {stats.length > 0
-          ? stats.map((s, i) => <StatCard key={i} stat={s} />)
+        {stats.cards?.length > 0
+          ? stats.cards.map((s, i) => <StatCard key={i} stat={s} />)
           : <SectionEmptyState status={errors.stats} icon="📈" emptyTitle="No stats yet" emptyHint="Stats will appear once there's activity to measure." />}
       </div>
 
@@ -1023,11 +1046,9 @@ function DashboardView({ onViewProfile, onViewQuestions, onViewLeaderboard, onVi
           </div>
         </div>
         {[
-          { label: "Points", value: safeUser.points, color: C.primary },
-          { label: "Questions", value: safeUser.questionsAsked, color: C.accent },
-          { label: "Answers", value: safeUser.answersGiven, color: C.success },
-          { label: "Resources", value: safeUser.resourcesShared, color: C.warning },
-          { label: "Rank", value: `#${safeUser.rank_position}`, color: C.danger },
+          { label: "Points", value: safeProfile.points, color: C.primary },
+          { label: "Streak", value: `${safeProfile.streak}d`, color: C.accent },
+          { label: "Rank", value: `#${safeProfile.rankPosition}`, color: C.danger },
         ].map((s) => (
           <div key={s.label} className="profile-stat" style={{ "--border": C.border }}>
             <div className="profile-stat-value" style={{ "--stat-color": s.color }}>{s.value}</div>

@@ -2,7 +2,7 @@ import os
 import environ
 from pathlib import Path
 from datetime import timedelta
-
+from celery.schedules import crontab
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # This goes one level higher up to find your top folder
@@ -22,6 +22,7 @@ ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(','
 # Installed Apps
 # ─────────────────────────────────────────
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -212,7 +213,12 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
-
+CELERY_BEAT_SCHEDULE = {
+        "finalize-streaks-midnight": {
+            "task": "gamification.tasks.finalize_streaks",
+            "schedule": crontab(hour=0, minute=0),
+        },
+    }
 # ─────────────────────────────────────────
 # Internationalisation & Static
 # ─────────────────────────────────────────

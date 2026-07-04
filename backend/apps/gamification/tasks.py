@@ -1,14 +1,4 @@
-"""
-Celery tasks for the gamification app.
 
-Register in settings:
-    CELERY_BEAT_SCHEDULE = {
-        "finalize-streaks-midnight": {
-            "task": "gamification.tasks.finalize_streaks",
-            "schedule": crontab(hour=0, minute=0),
-        },
-    }
-"""
 from celery import shared_task
 
 

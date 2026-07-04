@@ -144,7 +144,7 @@ function StreakCalendar({ history }) {
   );
 }
 
-function StatCard({ label, value, accent, sub, icon, delay = 0 }) {
+function StatCardShell({ delay = 0, className = "", children }) {
   const [isVisible, setIsVisible] = useState(false);
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), delay);
@@ -152,8 +152,16 @@ function StatCard({ label, value, accent, sub, icon, delay = 0 }) {
   }, [delay]);
 
   return (
-    <div className={`stat-card ${isVisible ? "visible" : ""}`}>
-      <div className="stat-card-header">
+    <div className={`gd-stat-card ${className} ${isVisible ? "visible" : ""}`}>
+      {children}
+    </div>
+  );
+}
+
+function StatCard({ label, value, accent, sub, icon, delay = 0 }) {
+  return (
+    <StatCardShell delay={delay}>
+      <div className="gd-stat-card-header">
         <span className="stat-label">{label}</span>
         {icon && <span className="stat-icon">{icon}</span>}
       </div>
@@ -161,7 +169,7 @@ function StatCard({ label, value, accent, sub, icon, delay = 0 }) {
         {value}
       </span>
       {sub && <span className="stat-sub">{sub}</span>}
-    </div>
+    </StatCardShell>
   );
 }
 
@@ -239,7 +247,7 @@ function Leaderboard({ timeframe, onChangeTimeframe }) {
           {["weekly", "monthly", "all"].map((tf) => (
             <button
               key={tf}
-              className={`tab-btn ${timeframe === tf ? "active" : ""}`}
+              className={`gd-tab-btn ${timeframe === tf ? "active" : ""}`}
               onClick={() => onChangeTimeframe(tf)}
             >
               {tf === "all" ? "All Time" : tf.charAt(0).toUpperCase() + tf.slice(1)}
@@ -422,87 +430,93 @@ export default function GamificationDashboard({ themeMode, onToggleTheme } = {})
       </header>
 
       {/* ── Stats row ── */}
-      <section className="stats-row">
-        <StatCard
-          label="Total Points"
-          value={animatedTotal.toLocaleString()}
-          accent="var(--primary)"
-          sub={`Next milestone: ${nextMilestone.toLocaleString()}`}
-          icon={<SparkleIcon size={16} />}
-          delay={100}
-        />
-        <StatCard
-          label="Current Streak"
-          value={`${animatedStreak} day${animatedStreak !== 1 ? "s" : ""}`}
-          accent="var(--warning)"
-          sub={streak > 0 ? "Keep the fire burning!" : "Log in daily to start"}
-          icon={<FlameIcon active={streak > 0} size={16} />}
-          delay={200}
-        />
-        <StatCard
-          label="Events Today"
-          value={streakHistory[0]?.events_count ?? 0}
-          accent="var(--success)"
-          sub="activity today"
-          delay={300}
-        />
-        <div className="stat-card progress-card stat-card-delayed">
-          <ProgressRing
-            value={progressToNext}
-            max={100}
-            size={68}
-            stroke={5}
-            color="var(--primary)"
+      <div className="gd-container gd-stats-wrap">
+        <section className="stats-row">
+          <StatCard
+            label="Total Points"
+            value={animatedTotal.toLocaleString()}
+            accent="var(--primary)"
+            sub={`Next milestone: ${nextMilestone.toLocaleString()}`}
+            icon={<SparkleIcon size={16} />}
+            delay={100}
           />
-        </div>
-      </section>
+          <StatCard
+            label="Current Streak"
+            value={`${animatedStreak} day${animatedStreak !== 1 ? "s" : ""}`}
+            accent="var(--warning)"
+            sub={streak > 0 ? "Keep the fire burning!" : "Log in daily to start"}
+            icon={<FlameIcon active={streak > 0} size={16} />}
+            delay={200}
+          />
+          <StatCard
+            label="Events Today"
+            value={streakHistory[0]?.events_count ?? 0}
+            accent="var(--success)"
+            sub="activity today"
+            delay={300}
+          />
+          <StatCardShell className="progress-card" delay={400}>
+            <ProgressRing
+              value={progressToNext}
+              max={100}
+              size={68}
+              stroke={5}
+              color="var(--primary)"
+            />
+          </StatCardShell>
+        </section>
+      </div>
 
       {/* ── Streak calendar ── */}
-      <section className="card calendar-card">
-        <div className="card-header">
-          <div>
-            <h2 className="section-title">30-Day Activity</h2>
-            <p className="section-sub">Each square = one day. Orange = active.</p>
+      <div className="gd-container">
+        <section className="card calendar-card section-calendar">
+          <div className="card-header">
+            <div>
+              <h2 className="section-title">30-Day Activity</h2>
+              <p className="section-sub">Each square = one day. Orange = active.</p>
+            </div>
+            <StreakBadge streak={streak} />
           </div>
-          <StreakBadge streak={streak} />
-        </div>
-        <StreakCalendar history={streakHistory} />
-        <div className="calendar-legend">
-          <div className="legend-item">
-            <div className="legend-dot active" />
-            <span>Active</span>
+          <StreakCalendar history={streakHistory} />
+          <div className="calendar-legend">
+            <div className="legend-item">
+              <div className="legend-dot active" />
+              <span>Active</span>
+            </div>
+            <div className="legend-item">
+              <div className="legend-dot today" />
+              <span>Today</span>
+            </div>
+            <div className="legend-item">
+              <div className="legend-dot inactive" />
+              <span>Inactive</span>
+            </div>
           </div>
-          <div className="legend-item">
-            <div className="legend-dot today" />
-            <span>Today</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-dot inactive" />
-            <span>Inactive</span>
-          </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
       {/* ── Bottom split ── */}
-      <div className="bottom-grid">
-        {/* Recent activity */}
-        <section className="card">
-          <div className="card-header">
-            <h2 className="section-title">Recent Activity</h2>
-            <span className="badge badge-indigo">
-              {recentTransactions.length} events
-            </span>
-          </div>
-          <TransactionList transactions={recentTransactions} />
-        </section>
+      <div className="gd-container">
+        <div className="bottom-grid section-bottom">
+          {/* Recent activity */}
+          <section className="card">
+            <div className="card-header">
+              <h2 className="section-title">Recent Activity</h2>
+              <span className="gd-badge gd-badge-indigo">
+                {recentTransactions.length} events
+              </span>
+            </div>
+            <TransactionList transactions={recentTransactions} />
+          </section>
 
-        {/* Leaderboard */}
-        <section className="card">
-          <Leaderboard
-            timeframe={timeframe}
-            onChangeTimeframe={setTimeframe}
-          />
-        </section>
+          {/* Leaderboard */}
+          <section className="card">
+            <Leaderboard
+              timeframe={timeframe}
+              onChangeTimeframe={setTimeframe}
+            />
+          </section>
+        </div>
       </div>
     </div>
   );

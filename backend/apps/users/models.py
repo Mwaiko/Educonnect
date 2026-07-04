@@ -14,9 +14,6 @@ class UserManager(BaseUserManager):
         if not email:
             raise ValueError("Email is required.")
         email = self.normalize_email(email)
-        # `subjects` is now a ManyToMany (see User.subjects below), which
-        # can't be assigned via the model constructor — it needs a pk to
-        # exist first. Pop it out and .set() it after save().
         subjects = extra_fields.pop("subjects", None)
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
